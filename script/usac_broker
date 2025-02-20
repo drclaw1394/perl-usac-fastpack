@@ -1,0 +1,33 @@
+#!/usr/bin/env/ usac --backend AnyEvent
+#
+
+use v5.36;
+use Data::Dumper;
+use uSAC::IO;
+use uSAC::FastPack::Broker;
+use uSAC::FastPack::Broker::Bridge;
+
+my $node=uSAC::FastPack::Broker->new;
+
+my %config;
+
+my $l="po=6123,t=stream,f=INET\$,i=lo";
+
+
+
+# Create 
+sub do_connect;
+
+$node->server($l, sub {
+  say STDERR "Server running";
+});
+
+
+uSAC::IO::timer 0, 1, sub {
+  #say "tick tock";
+};
+
+
+
+
+1;

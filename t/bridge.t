@@ -1,0 +1,22 @@
+
+use v5.36;
+use uSAC::FastPack::Broker::Bridge;
+
+use Test::More;
+
+my $node=uSAC::FastPack::Broker::Default;
+
+my $bridge=uSAC::FastPack::Broker::Bridge->new(broker=>$node, rfd=>0, wfd=>2);
+
+ok defined $bridge;
+
+$bridge->forward_message_sub->([[time, "hello",  "there"]], sub {
+    say STDERR "CALLBACK FROM ON WRITE";
+    $bridge->close;
+  });
+
+
+done_testing;
+
+
+1;
