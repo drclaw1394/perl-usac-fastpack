@@ -5,7 +5,7 @@ use v5.36;
 use Data::Dumper;
 use uSAC::IO;
 use uSAC::FastPack::Broker;
-use uSAC::FastPack::Broker::Bridge;
+#use uSAC::FastPack::Broker::Bridge;
 
 my $node=uSAC::FastPack::Broker->new;
 
@@ -13,21 +13,24 @@ my %config;
 
 
 
-say STDERR "DO CONNECT";
+asay "DO CONNECT";
 my $c="po=6123,t=stream,f=INET\$,i=lo";
-$node->connect($c, sub {
+$node->connect($c);
+$node->on_bridge=sub {
     if($_[0]){
-      say STDERR "CONNECTED OK";
-      $node->listen(undef, "test", sub {
-          say STDERR "GOT MESSAGE ".Dumper @_;
-        });
+      asay "CONNECTED OK";
+      timer 2, 0 , sub {
+        $node->listen(undef, "test", sub {
+            asay "GOT MESSAGE ".Dumper @_;
+            });
+      };
     }
-});
+};
 
 
 
 uSAC::IO::timer 0, 1, sub {
-  #$node->broadcast(undef, "test", "value");
+  #$node->broadcast(undef, "test", "value"x1024);
 };
 
 

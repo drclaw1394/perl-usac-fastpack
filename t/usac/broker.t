@@ -1,14 +1,18 @@
 use v5.36;
 
 use Test::More;
+use uSAC::IO;
 use uSAC::FastPack::Broker;
 
 use Data::Dumper;
 
 my $node=uSAC::FastPack::Broker::Default;#->new;
 
+ok defined $node;
+
 $node->listen("adf", "test", sub {
   say STDERR "GOT MESSAGE:", Dumper @_;
+  done_testing;
 },
 undef);
 
@@ -17,10 +21,4 @@ $node->listen(undef, "test222", sub {
 },
 undef);
 
-#$node->broadcast(undef,"test", "message content");
-$node->broadcast("adf", "test", "message content");
-#$node->broadcast(undef,"test", "message content");
-#$node->broadcast(undef,"tiest", "message content");
-#$node->broadcast(undef,"test2", "message 2content");
-ok defined $node;
-done_testing;
+$node->broadcast("adddddf", "test", "message content");

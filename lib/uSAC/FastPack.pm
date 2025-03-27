@@ -24,6 +24,8 @@ sub sm_fastpack_decoder {
       $ns=$options{namespace}//create_namespace;
     }
     my $source_id=$options{source_id};
+    my $sub=$options{sub};
+    
 
     my ($next, $index, @optional)=@_;
     #my $buffer="";
@@ -31,13 +33,24 @@ sub sm_fastpack_decoder {
       my $outputs=[];
       my $cb=$_[1];
 
-      Data::FastPack::decode_fastpack $_[0], $outputs, undef, $ns;
+      Data::FastPack::decode_fastpack $_[0][0], $outputs, undef, $ns;
 
       for(@{$outputs}){
-        $_->[FP_MSG_PAYLOAD] =decode_meta_payload $_->[FP_MSG_PAYLOAD] if $_->[FP_MSG_ID]==0;
+        if($_->[FP_MSG_ID] eq '0' ){
+          $_->[FP_MSG_PAYLOAD] =decode_meta_payload $_->[FP_MSG_PAYLOAD];
+          for($_->[FP_MSG_PAYLOAD]{listen}){
+            $_->{sub}=$sub if $_;
+          }
+          for($_->[FP_MSG_PAYLOAD]{ignore}){
+            $_->{sub}=$sub if $_;
+          }
+        }
       }
+      say STDERR "DECODE FASTPACK====";
 
-      $next->($source_id, $outputs, $cb);
+      use Data::Dumper;
+      say STDERR Dumper $outputs;
+      $next->([$source_id, $outputs], $cb);
     }
   }
 }
@@ -60,16 +73,23 @@ sub sm_fastpack_encoder {
 
 
     sub {
-      #my $inputs=$_[0];
+      #my $source=$_[0];
+      say STDERR Dumper @_;
+      my $source=shift @{$_[0]};
+      my $inputs=$_[0][0];
+
       my $cb=$_[1];
       my $buffer="";
 
-      for(@{$_[0]}){
-        $_->[FP_MSG_PAYLOAD] =encode_meta_payload $_->[FP_MSG_PAYLOAD] if $_->[FP_MSG_ID]==0;
+      for(@$inputs){
+        use Data::Dumper;
+        say "LOOP OF ENCODER: ".Dumper $_;
+        $_->[FP_MSG_PAYLOAD] =encode_meta_payload $_->[FP_MSG_PAYLOAD] if $_->[FP_MSG_ID] eq '0';
       }
 
-      Data::FastPack::encode_fastpack $buffer, $_[0], undef, $ns;
-      $next->($buffer, $cb); 
+      Data::FastPack::encode_fastpack $buffer, $inputs, undef, $ns;
+      say STDERR "BUFFER  lenght is  ". length $buffer;
+      $next->([$buffer], $cb); 
     }
   }
 }

@@ -2,19 +2,19 @@ package uSAC::FastPack::Broker;
 
 use v5.36;
 
-use uSAC::IO;
+use uSAC::IO qw(asay adump socket_stage);
 use Object::Pad;
 
 use Data::FastPack;
 use Data::FastPack::Meta;
 
-use Data::Dumper;
 use uSAC::FastPack::Broker::Bridge;
 
 use Hustle::Table;
 use constant::more qw<READER=0 WRITER WRITER_SUB>;
 
-use Export::These qw<usac_broadcast usac_listen>;
+use Export::These qw<usac_broadcast usac_listen usac_ignore>;
+
 
 
 sub usac_broadcast;
@@ -47,6 +47,9 @@ field $_uuid;         # UUID of this broker/node/client
 field $_default_source_id;
 field $_default_match_mode;
 
+field $_on_bridge :mutator;
+field $_on_ready :mutator;
+
 BUILD {
 
   # Configure table
@@ -59,8 +62,7 @@ BUILD {
   
   $_dispatcher=sub {
 
-    say STDERR "DISPATCH IN BROKER";
-    my $source=shift; # The object/id from where these messages 'originated' 
+    my $source=shift @{$_[0]}; # The object/id from where these messages 'originated' 
                       # Could be a sub, an number, uuid
                       #
     # Filter the messages to match end points
@@ -68,23 +70,25 @@ BUILD {
     # This allows a logical test only on  numeric 0, which is then detected as a system message
     # Translating it to the UUID of this node, allows for adding listeners
     #
-    my @entries=$_ht_dispatcher->(map $_->[FP_MSG_ID], @{$_[0]});
+    my @entries=$_ht_dispatcher->(map $_->[FP_MSG_ID], @{$_[0][0]});
+    for my $msg (@{$_[0][0]}){  
+      #my @entries=$_ht_dispatcher->($msg->[FP_MSG_ID]);#map $_->[FP_MSG_ID], @{$_[0]});
 
-    use Data::Dumper;
-    say STDERR "Source: ".$source;
-    say STDERR "Message ". Dumper $_[0];
-    say STDERR "ENtries matching: ". Dumper @entries;
 
-    for my $msg (@_){  
       for my ($e, $c)(@entries){
         # Call each of the subs on matching entry with this 
         # But only call if the source filter doesnt match
         # messages are not sent back to the source, 
         # psuedo grouping
         for my ($sub, $source_id) ($e->[Hustle::Table::value_]->@*){
+          no warnings "uninitialized";
           if(!defined($source_id) or $source ne $source_id){
-            $sub->($source, $msg); # Dispatch messages to listener
-            
+            #$sub->($source, [$msg]); # Dispatch messages to listener
+            $sub->([$source, [$msg]]); # Dispatch messages to listener
+        
+          }
+          else {
+
           }
         }
       }
@@ -106,7 +110,7 @@ BUILD {
 
     # Send the messages through
     # TODO: make this asap, no syncrhonous
-    $_dispatcher->($client_id, \@msg);
+    $_dispatcher->([$client_id, \@msg]);
   };
 
   # Create listener sub
@@ -118,12 +122,12 @@ BUILD {
     my $sub=shift;
     my $type=shift//$_default_match_mode;
   
-    die 'Cannot listen for an unamed message' unless $name;
+    #die 'Cannot listen for an unamed message' unless $name;
 
     my $object={listen=>{source=>$source_id, matcher=>$name, type=>$type, sub=>$sub}};
 
     # Add message to the queue 
-    $_dispatcher->($source_id, [[time, 0, $object]]);
+    $_dispatcher->([$source_id, [[time, '0', $object]]]);
 
   };
 
@@ -133,11 +137,12 @@ BUILD {
 
   $_meta_handler = sub {
 
-    use Data::Dumper;
-    say STDERR "META HANDLER", Dumper @_;
-    say STDERR "BRidges".@$_bridges;
 
-    my ($source_id, $msgs)=@_;
+
+    #my ($source_id, $msgs)=@_;
+    my $source_id= shift @{$_[0]};
+    my $msgs=$_[0][0];
+
     
     my $obj;
     my $name;
@@ -160,9 +165,11 @@ BUILD {
                 my $found;
                 for my $e($_ht->@*){
 
+                  no warnings "uninitialized";
                   if($e->[Hustle::Table::matcher_] eq $name and $e->[Hustle::Table::type_] eq $type){
                     push $e->[Hustle::Table::value_]->@*, $sub, $source_id;
                     $found=1;
+
                     last;
                   }
                 }
@@ -203,14 +210,6 @@ BUILD {
                 }
               }
 
-              say STDERR "FORWARD MESSAGE=========";
-              # No need to forward the meta to all bridges
-              for(@$_bridges){
-                $_->forward_message_sub->([$msg], sub {
-                    say STDERR "BRIGE WRITE COMPLTE";
-                  }
-                )
-              }
             }
           }
   };
@@ -228,7 +227,7 @@ BUILD {
     my $object={ignore=>{source=>$source_id, matcher=>$name, type=>$type, sub=>$sub}};
 
     # Add message to the queue 
-    $_dispatcher->($source_id, [[time, 0, $object]]);
+    $_dispatcher->([$source_id,[[time, 0, $object]]]);
 
   };
 
@@ -239,22 +238,24 @@ BUILD {
       # takes Socket::more specifiction for connecting
       my $c=shift;
       my $cb=shift;
+      $_on_bridge=$cb if $cb;
 
-      uSAC::IO::socket_stage($c, sub {
+      socket_stage($c, sub {
         $_[1]{data}={
           on_connect=> sub {
-            say "CONNECTED TO HOST @_";
-            push $_bridges->@*, uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$_[0], wfd=>$_[0]);
-            $cb->(1);
+            asay $STDERR, "CONNECTED TO HOST @_";
+            adump($STDERR, @_);
+            push $_bridges->@*, my $bridge= uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$_[0], wfd=>$_[0]);
+            $_on_bridge->($bridge);
           },
 
           on_error=>sub {
-            say "GOT ERROR";
+            asay $STDERR, "GOT ERROR";
             $cb->(undef);
           }
 
         };
-        say STDERR "calling usacCONNECT";
+        asay $STDERR,  "calling usacCONNECT";
         &uSAC::IO::connect;
       });
   };
@@ -264,7 +265,10 @@ BUILD {
   # Bootstrap with meta handler for 'unamed' 0 id
   #
   
-  $_ht->add([0, [$_meta_handler, $_uuid], "exact"]);
+  $_ht->add(['0', [$_meta_handler, $_uuid], "exact"]);
+  
+  #Set default
+  $_ht->add([undef,[sub { say "UNKOWN"}, undef],'exact']);
   $_cache={};
   $_ht_dispatcher=$_ht->prepare_dispatcher(cache=>$_cache);
 
@@ -323,20 +327,26 @@ method connect {
 method server {
   my $l=shift;
   my $cb=shift;
+  $_on_ready=$cb if $cb;
 
   uSAC::IO::socket_stage($l, sub {
       $_[1]{data}={
         reuse_port=>1,
         reuse_addr=>1,
         on_bind=>\&uSAC::IO::listen,
-        on_listen=>sub { &uSAC::IO::accept; $cb->()},
+        on_listen=>sub { &uSAC::IO::accept; $_on_ready->()},
         on_accept=>sub {
-          say STDERR  "ADDING CLIENT=====";
+          uSAC::IO::asay   "ADDING CLIENT=====";
           my $clients=$_[0];
-          push $_bridges->@*, uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$_, wfd=>$_) for @$clients;
+          for my $fd (@$clients){
+            uSAC::IO::asap(sub {
+              push $_bridges->@*, my $bridge= uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$fd, wfd=>$fd);
+              $_on_bridge and $_on_bridge->($bridge);
+            });
+          }
         },
         on_error=>sub {
-          say STDERR "OIJSDF";
+          uSAC::IO::asay  "OIJSDF";
         }
         ,
       };
@@ -379,8 +389,10 @@ sub Default {
 #
 unless($Default){
   $Default=uSAC::FastPack::Broker->new;
-  *usac_broadcast=$Default->get_broadcaster;
-  *usac_listen=$Default->get_listener;
-  *usac_ignore=$Default->get_ignorer;
+  
+  $uSAC::IO::broadcaster=*usac_broadcast=$Default->get_broadcaster;
+  $uSAC::IO::listener=*usac_listen=$Default->get_listener;
+  $uSAC::IO::ignorer=*usac_ignore=$Default->get_ignorer;
+
 }
 1;

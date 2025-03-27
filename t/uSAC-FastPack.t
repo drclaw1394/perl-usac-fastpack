@@ -33,10 +33,11 @@ my $head=$chain->link(
     # This is the end point 
     # Do a test comparision of output arrays
     #
-    ok $_[0]->@* == @copy, "same message count";
+    my $source_id=shift @{$_[0]};
+    ok $_[0][0]->@* == @copy, "same message count";
     for my $s (0..$#copy){
      for my $i (0..2){ 
-      ok $copy[$s][$i] eq $_[0][$s][$i];
+      ok $copy[$s][$i] eq $_[0][0][$s][$i];
 
       }
     }
@@ -46,7 +47,7 @@ my $head=$chain->link(
 
 
 # execute
-$head->(\@input, "callback");
+$head->(["df", \@input], "callback");
 
 ok $head, "Head generated";
 done_testing;

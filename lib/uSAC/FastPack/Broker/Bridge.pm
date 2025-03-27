@@ -18,7 +18,6 @@ use v5.36;
 
 use Object::Pad;
 
-
 class uSAC::FastPack::Broker::Bridge;
 
 field $_tx_namespace;
@@ -39,8 +38,8 @@ BUILD {
   # create a new source_id, messages coming in on this broker are not sent back out!
 
   $_source_id= rand 10000;
-  $_reader=uSAC::IO::reader($_rfd);
-  $_writer=uSAC::IO::writer($_wfd);
+  $_reader=reader($_rfd);
+  $_writer=writer($_wfd);
 
   # main processing of messages 
   my $_dispatch=$_broker->get_dispatcher;
@@ -49,7 +48,13 @@ BUILD {
   
   $_forward_message_sub = linker 
     sm_fastpack_encoder(namepsace=>$_tx_namespace)
-    #=> sub { my $next=shift; sub {$_[0]=unpack "H*",$_[0]; &$next}}
+    => sub { 
+      my $next=shift;
+      sub {
+        asay $STDERR, "FORWARDING MESSAGE==== length ".length $_[0];
+        &$next
+      }
+    }
     =>$_writer->writer;
 
 
@@ -57,18 +62,28 @@ BUILD {
   #
 
   $_reader->on_read=linker 
-      sm_fastpack_decoder(namespace=>$_rx_namespace, source_id=>$_source_id)
+      sub { my $next=shift; sub { asay $STDERR, "ON READ......"; &$next}}
+      =>sm_fastpack_decoder(namespace=>$_rx_namespace, source_id=>$_source_id, sub=>$_forward_message_sub)
       => $_dispatch;
 
 
+  # We want meta messages to be forwared
+  asay $STDERR, "Bridge id about to listen for meta is: $_source_id";
+  $_broker->listen($_source_id, '0', $_forward_message_sub, "exact");
 
   $_reader->start;
+  #$_reader->on_error=sub {$_reader->pause};
+  #$_reader->on_eof=sub {$_reader->pause};
 
 }
 
 method close {
   $_reader->pause;
   $_writer->pause;
+
+  IO::FD::close($_rfd);
+  IO::FD::close($_wfd);
+
   # Remove any registered listening....
 }
 
