@@ -6,7 +6,7 @@ use uSAC::FastPack::Broker::Bridge;
 
 use Test::More;
 
-my $node=uSAC::FastPack::Broker::Default;
+my $node=$uSAC::Main::Default_Broker;
 
 my $bridge=uSAC::FastPack::Broker::Bridge->new(broker=>$node, rfd=>0, wfd=>2);
 

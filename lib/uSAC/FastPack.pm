@@ -48,8 +48,6 @@ sub sm_fastpack_decoder {
       }
       say STDERR "DECODE FASTPACK====";
 
-      use Data::Dumper;
-      say STDERR Dumper $outputs;
       $next->([$source_id, $outputs], $cb);
     }
   }
@@ -74,7 +72,6 @@ sub sm_fastpack_encoder {
 
     sub {
       #my $source=$_[0];
-      say STDERR Dumper @_;
       my $source=shift @{$_[0]};
       my $inputs=$_[0][0];
 
@@ -82,8 +79,6 @@ sub sm_fastpack_encoder {
       my $buffer="";
 
       for(@$inputs){
-        use Data::Dumper;
-        say "LOOP OF ENCODER: ".Dumper $_;
         $_->[FP_MSG_PAYLOAD] =encode_meta_payload $_->[FP_MSG_PAYLOAD] if $_->[FP_MSG_ID] eq '0';
       }
 

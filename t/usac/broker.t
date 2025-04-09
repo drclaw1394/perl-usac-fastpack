@@ -6,7 +6,7 @@ use uSAC::FastPack::Broker;
 
 use Data::Dumper;
 
-my $node=uSAC::FastPack::Broker::Default;#->new;
+my $node=$uSAC::Main::Default_Broker;#->new;
 
 ok defined $node;
 
@@ -16,7 +16,7 @@ $node->listen("adf", "test", sub {
 },
 undef);
 
-$node->listen(undef, "test222", sub {
+$node->listen( "test222", sub {
   say STDERR "GOT MESSAGE:", Dumper @_;
 },
 undef);
