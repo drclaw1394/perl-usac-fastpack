@@ -7,7 +7,7 @@ WriteMakefile(
     VERSION_FROM      => 'lib/uSAC/FastPack.pm', # finds $VERSION, requires EU::MM from perl >= 5.5
     PREREQ_PM         => {
       'Data::FastPack'=> v0.2.0,
-      'Sub::Midler'   => v0.4.0,
+      'Sub::Middler'   => v0.4.0,
     }, 
     ABSTRACT_FROM     => 'lib/uSAC/FastPack.pm', # retrieve abstract from module
     AUTHOR            => 'Ruben Westerberg <drclaw@local>',
