@@ -5,10 +5,12 @@ use ExtUtils::MakeMaker;
 WriteMakefile(
     NAME              => 'uSAC::FastPack',
     VERSION_FROM      => 'lib/uSAC/FastPack.pm', # finds $VERSION, requires EU::MM from perl >= 5.5
-    PREREQ_PM         => {}, # e.g., Module::Name => 1.1
+    PREREQ_PM         => {
+      'Data::FastPack'=>0
+    }, 
     ABSTRACT_FROM     => 'lib/uSAC/FastPack.pm', # retrieve abstract from module
     AUTHOR            => 'Ruben Westerberg <drclaw@local>',
-    #LICENSE           => 'perl',
+    LICENSE           => 'mit',
     #Value must be from legacy list of licenses here
     #https://metacpan.org/pod/Module::Build::API
 );

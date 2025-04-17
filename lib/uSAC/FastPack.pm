@@ -4,6 +4,7 @@ use Data::FastPack;
 use Data::FastPack::Meta;
 use feature ":all";
 
+our $VERSION = v0.1.0;
 
 use Export::These qw<sm_fastpack_encoder sm_fastpack_decoder>;
 
