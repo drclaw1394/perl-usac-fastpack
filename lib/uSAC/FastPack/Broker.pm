@@ -1,5 +1,6 @@
 package uSAC::FastPack::Broker;
 
+our $VERSION = 'v0.2.0';
 use v5.36;
 use Time::HiRes qw<time>;
 

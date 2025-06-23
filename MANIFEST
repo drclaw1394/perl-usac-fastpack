@@ -1,6 +1,17 @@
+.gitigore
 Changes
+lib/uSAC/FastPack/Broker.pm
+lib/uSAC/FastPack/Broker.pod
+lib/uSAC/FastPack/Broker/Bridge.pm
+lib/uSAC/FastPack/Dispatcher.pm
+LICENSE
 Makefile.PL
-MANIFEST
+MANIFEST			This list of files
+MANIFEST.SKIP
 README
+script/client
+script/usac_broker
 t/uSAC-FastPack.t
-lib/uSAC/FastPack.pm
+t/usac/bridge.t
+t/usac/broker.t
+t/wrapper.t
