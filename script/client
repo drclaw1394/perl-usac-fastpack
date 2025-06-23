@@ -1,4 +1,4 @@
-#!/usr/bin/env/ usac --backend AnyEvent
+#!/usr/bin/env usac --backend AnyEvent
 #
 
 use v5.36;
@@ -15,18 +15,18 @@ my %config;
 
 asay "DO CONNECT";
 my $c="po=6123,t=stream,f=INET\$,i=lo";
-$node->connect($c);
 $node->on_bridge=sub {
-    if($_[0]){
       asay "CONNECTED OK";
-      timer 2, 0 , sub {
-        $node->listen(undef, "test", sub {
+      $node->listen(undef, "test", sub {
             asay "GOT MESSAGE ".Dumper @_;
-            });
-      };
-    }
+      });
 };
 
+$node->on_error=sub {
+  asay "ERROR @_";
+};
+
+$node->connect($c);
 
 
 uSAC::IO::timer 0, 1, sub {

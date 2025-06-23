@@ -3,11 +3,16 @@ package uSAC::FastPack::Broker;
 use v5.36;
 use Time::HiRes qw<time>;
 
+use Log::OK;
+use Log::ger;
+#use uSAC::Log; # DO NOT USE... WE ARE USED BY THE LOGGING SYSTEM
+
 use uSAC::IO qw(asay adump socket_stage);
 use Object::Pad;
 
 use Data::FastPack;
 use Data::FastPack::Meta;
+
 
 use uSAC::FastPack::Broker::Bridge;
 
@@ -41,6 +46,7 @@ field $_default_match_mode;
 
 field $_on_bridge :mutator;
 field $_on_ready :mutator;
+field $_on_error :mutator;
 
 BUILD {
 
@@ -54,6 +60,7 @@ BUILD {
   
   $_dispatcher=sub {
 
+    Log::OK::TRACE and asay "$_uuid : In dispatcher";
     my $source=shift @{$_[0]}; # The object/id from where these messages 'originated' 
                       # Could be a sub, an number, uuid
                       #
@@ -62,21 +69,25 @@ BUILD {
     # This allows a logical test only on  numeric 0, which is then detected as a system message
     # Translating it to the UUID of this node, allows for adding listeners
     #
-    my @entries=$_ht_dispatcher->(map $_->[FP_MSG_ID], @{$_[0][0]});
+    #my @entries=$_ht_dispatcher->(map $_->[FP_MSG_ID], @{$_[0][0]});
     for my $msg (@{$_[0][0]}){  
-      #my @entries=$_ht_dispatcher->($msg->[FP_MSG_ID]);#map $_->[FP_MSG_ID], @{$_[0]});
+      Log::OK::TRACE and asay "$_uuid : Searching table for $msg->[FP_MSG_ID]";
+      my @entries=$_ht_dispatcher->($msg->[FP_MSG_ID]);#map $_->[FP_MSG_ID], @{$_[0]});
 
 
+      Log::OK::TRACE and asay "$_uuid : Found ".@entries." items in table";
       for my ($e, $c)(@entries){
         # Call each of the subs on matching entry with this 
         # But only call if the source filter doesnt match
         # messages are not sent back to the source, 
         # psuedo grouping
+        Log::OK::TRACE and asay "$_uuid : -- entry has ".($e->[Hustle::Table::value_]->@*)/2 ." callbacks";
         for my ($sub, $source_id) ($e->[Hustle::Table::value_]->@*){
           no warnings "uninitialized";
           if(!defined($source_id) or $source ne $source_id){
-            #$sub->($source, [$msg]); # Dispatch messages to listener
+            Log::OK::TRACE and asay "$_uuid : executing callback";
             $sub->([$source, [$msg]]); # Dispatch messages to listener
+            #uSAC::IO::asap $sub,[$source, [$msg]];
         
           }
           else {
@@ -137,7 +148,7 @@ BUILD {
 
   $_meta_handler = sub {
 
-
+    Log::OK::TRACE and asay "$_uuid: In meta handler";
 
     #my ($source_id, $msgs)=@_;
     my $source_id= shift @{$_[0]};
@@ -153,6 +164,7 @@ BUILD {
             for my ($k, $v) ($msg->[FP_MSG_PAYLOAD]->%*){
               if($k eq "listen"){
 
+                Log::OK::TRACE and asay "$_uuid: Listen message processing";
                 $name=$v->{matcher};
                 $sub=delete $v->{sub};
                 $type=$v->{type};
@@ -161,6 +173,7 @@ BUILD {
 
                 # Preconvert  to ensure grouping of dispatch entries
                 $name=qr{$name} if !$type;
+                #asay "LISTED FOR $name";
                 # Search the hustle table entries for a match against the matcher
                 my $found;
                 for my $e($_ht->@*){
@@ -170,11 +183,13 @@ BUILD {
                     push $e->[Hustle::Table::value_]->@*, $sub, $source_id;
                     $found=1;
 
+                  Log::OK::TRACE and asay "$_uuid: $name Found existing ht entry created";
                     last;
                   }
                 }
 
                 unless($found){
+                  Log::OK::TRACE and asay "$_uuid: $name Could not find existing ht entry created a new one";
                   # Register an new entry with a 
                   $_ht->add([$name, [$sub, $source_id], $type]);
 
@@ -248,18 +263,18 @@ BUILD {
         $_[1]{data}={
           on_connect=> sub {
             asay $STDERR, "CONNECTED TO HOST @_";
-            adump($STDERR, @_);
+            use Data::Dumper;
+            asay Dumper @_;
             push $_bridges->@*, my $bridge= uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$_[0], wfd=>$_[0]);
             $_on_bridge->($bridge);
           },
 
-          on_error=>sub {
-            asay $STDERR, "GOT ERROR";
-            $cb->(undef);
-          }
+          on_error=>$_on_error
 
         };
-        asay $STDERR,  "calling usacCONNECT";
+        #asay $STDERR,  "calling usacCONNECT";
+        #use Data::Dumper;
+        #asay Dumper @_;
         &uSAC::IO::connect;
       });
   };
@@ -332,27 +347,28 @@ method server {
   my $l=shift;
   my $cb=shift;
   $_on_ready=$cb if $cb;
+      use Data::Dumper;
 
+  print Dumper $l;
   uSAC::IO::socket_stage($l, sub {
+      print Dumper @_;
       $_[1]{data}={
         reuse_port=>1,
         reuse_addr=>1,
         on_bind=>\&uSAC::IO::listen,
-        on_listen=>sub { &uSAC::IO::accept; $_on_ready->()},
+        on_listen=>sub {asay "on_listen"; &uSAC::IO::accept; $_on_ready->()},
         on_accept=>sub {
           uSAC::IO::asay   "ADDING CLIENT=====";
           my $clients=$_[0];
           for my $fd (@$clients){
+            Log::OK::TRACE and asay "--- Client fd is $fd";
             uSAC::IO::asap(sub {
               push $_bridges->@*, my $bridge= uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$fd, wfd=>$fd);
               $_on_bridge and $_on_bridge->($bridge);
             });
           }
         },
-        on_error=>sub {
-          uSAC::IO::asay  "OIJSDF";
-        }
-        ,
+        on_error=>$_on_error
       };
       &uSAC::IO::bind;
     });
