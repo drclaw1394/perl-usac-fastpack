@@ -12,25 +12,37 @@ my $node=uSAC::FastPack::Broker->new;
 my %config;
 
 
+use feature "try";
 
 asay "DO CONNECT";
 my $c="po=6123,t=stream,f=INET\$,i=lo";
+my $bridge;
+my $t;
 $node->on_bridge=sub {
+    $bridge=$_[0];
+    $bridge->on_error=sub {
+      asay "ERROR";
+      timer_cancel($t);
+      try {
+      $bridge->close;
+      }
+      catch($e){
+      asay $STDERR, "bridge close error: $e";
+      }
+    
+    };
       asay "CONNECTED OK";
       $node->listen(undef, "test", sub {
             asay "GOT MESSAGE ".Dumper @_;
       });
 };
 
-$node->on_error=sub {
-  asay "ERROR @_";
-};
 
 $node->connect($c);
 
 
-uSAC::IO::timer 0, 1, sub {
-  #$node->broadcast(undef, "test", "value"x1024);
+$t=uSAC::IO::timer 0, 1, sub {
+  $node->broadcast(undef, "test", "value"x10);
 };
 
 
