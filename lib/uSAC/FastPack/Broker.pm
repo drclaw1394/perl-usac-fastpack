@@ -20,6 +20,8 @@ use uSAC::FastPack::Broker::Bridge;
 use Hustle::Table;
 use constant::more qw<READER=0 WRITER WRITER_SUB>;
 
+use Data::Dumper;
+
 class uSAC::FastPack::Broker;
 
 no warnings "experimental";
@@ -41,7 +43,7 @@ field $_ignorer_sub;
 field $_meta_handler;
 field $_connector_sub;
 
-field $_uuid;         # UUID of this broker/node/client
+field $_uuid;               # UUID of this broker/node/client
 field $_default_source_id;
 field $_default_match_mode;
 
@@ -60,8 +62,8 @@ BUILD {
   $_default_source_id= rand 10000;
   
   $_dispatcher=sub {
-
-    DEBUG and Log::OK::TRACE and asay "$_uuid : In dispatcher";
+    DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid : In dispatcher";
+    DEBUG and asay $STDERR, Dumper @_;
     my $source=shift @{$_[0]}; # The object/id from where these messages 'originated' 
                       # Could be a sub, an number, uuid
                       #
@@ -72,22 +74,22 @@ BUILD {
     #
     #my @entries=$_ht_dispatcher->(map $_->[FP_MSG_ID], @{$_[0][0]});
     for my $msg (@{$_[0][0]}){  
-      DEBUG and Log::OK::TRACE and asay "$_uuid : Searching table for $msg->[FP_MSG_ID]";
+      DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid : Searching table for $msg->[FP_MSG_ID]";
       my @entries=$_ht_dispatcher->($msg->[FP_MSG_ID]);#map $_->[FP_MSG_ID], @{$_[0]});
 
 
-      DEBUG and Log::OK::TRACE and asay "$_uuid : Found ".@entries." items in table";
+      DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid : Found ".@entries." items in table";
       for my ($e, $c)(@entries){
         # Call each of the subs on matching entry with this 
         # But only call if the source filter doesnt match
         # messages are not sent back to the source, 
         # psuedo grouping
-        DEBUG and Log::OK::TRACE and asay "$_uuid : -- entry has ".($e->[Hustle::Table::value_]->@*)/2 ." callbacks";
+        DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid : -- entry has ".($e->[Hustle::Table::value_]->@*)/2 ." callbacks";
         for my ($sub, $source_id) ($e->[Hustle::Table::value_]->@*){
           no warnings "uninitialized";
           if(!defined($source_id) or $source ne $source_id){
-            DEBUG and Log::OK::TRACE and asay "$_uuid : executing callback";
-            $sub->([$source, [$msg]]); # Dispatch messages to listener
+            DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid : executing callback";
+            $sub->([$source, [$msg, $c]]); # Dispatch messages to listener
             #uSAC::IO::asap $sub,[$source, [$msg]];
         
           }
@@ -119,6 +121,7 @@ BUILD {
     # Send the messages through
     # TODO: make this asap, no syncrhonous
     $_dispatcher->([$client_id, \@msg]);
+    $self;
   };
 
   # Create listener sub
@@ -140,6 +143,7 @@ BUILD {
 
     # Add message to the queue 
     $_dispatcher->([$source_id, [[time, '0', $object]]]);
+    $self;
 
   };
 
@@ -149,7 +153,7 @@ BUILD {
 
   $_meta_handler = sub {
 
-    DEBUG and Log::OK::TRACE and asay "$_uuid: In meta handler";
+    DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid: In meta handler";
 
     #my ($source_id, $msgs)=@_;
     my $source_id= shift @{$_[0]};
@@ -165,7 +169,7 @@ BUILD {
             for my ($k, $v) ($msg->[FP_MSG_PAYLOAD]->%*){
               if($k eq "listen"){
 
-                DEBUG and Log::OK::TRACE and asay "$_uuid: Listen message processing";
+                DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid: Listen message processing";
                 $name=$v->{matcher};
                 $sub=delete $v->{sub};
                 $type=$v->{type};
@@ -174,7 +178,6 @@ BUILD {
 
                 # Preconvert  to ensure grouping of dispatch entries
                 $name=qr{$name} if !$type;
-                #asay "LISTED FOR $name";
                 # Search the hustle table entries for a match against the matcher
                 my $found;
                 for my $e($_ht->@*){
@@ -184,14 +187,15 @@ BUILD {
                     push $e->[Hustle::Table::value_]->@*, $sub, $source_id;
                     $found=1;
 
-                  DEBUG and Log::OK::TRACE and asay "$_uuid: $name Found existing ht entry created";
+                  DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid: $name Found existing ht entry created";
                     last;
                   }
                 }
 
                 unless($found){
-                  DEBUG and Log::OK::TRACE and asay "$_uuid: $name Could not find existing ht entry created a new one";
+                  DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid: $name Could not find existing ht entry created a new one";
                   # Register an new entry with a 
+                  DEBUG and asay $STDERR, "$$ ADDING name $name with type $type";
                   $_ht->add([$name, [$sub, $source_id], $type]);
 
                   # rebuild the dispatcher
@@ -216,19 +220,19 @@ BUILD {
 
                     # Remove sub from list
                     for my ($j, $i) (reverse 0..$_ht->[$e]->[Hustle::Table::value_]->@*-1){
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "-- j is $j  and i is $i";
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "-----serching $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ -- j is $j  and i is $i";
+                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ -----serching $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                       
                       if($_ht->[$e]->[Hustle::Table::value_][$i] == $sub and
                         $_ht->[$e]->[Hustle::Table::value_][$j] eq $source_id){
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "-----unregister $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ -----unregister $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                         splice $_ht->[$e]->[Hustle::Table::value_]->@*, $i, 2;
                         $found=1;
 
                       }
                     }
                     unless($_ht->[$e][Hustle::Table::value_]->@*){
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "__REMOVING FROM HUSTLE TABLE at post $e----";
+                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ __REMOVING FROM HUSTLE TABLE at post $e----";
                       # all entries have been removed so remove from table
                       splice $_ht->@*, $e, 1;
                     }
@@ -241,9 +245,9 @@ BUILD {
                 $_ht_dispatcher=$_ht->prepare_dispatcher(cache=>$_cache);
 
                 if($force){
-                  DEBUG and Log::OK::TRACE and asay $STDERR,  "Looking for bidge  $source_id";
+                  DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ Looking for bidge  $source_id";
                   my $b=delete $_bridges->{$source_id};
-                  DEBUG and Log::OK::TRACE and asay $STDERR,  "found  bidge  $b";
+                  DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ found  bidge  $b";
                   $b->close if $b;
                 }
               }
@@ -260,7 +264,7 @@ BUILD {
     if(@_==2){
       unshift @_, undef;
     }
-    my $source_id=shift//$_default_source_id;
+    my $source_id=shift;#//$_default_source_id;
     my $name=shift;
     my $sub=shift;
     my $type=shift//$_default_match_mode;
@@ -271,6 +275,7 @@ BUILD {
     # Add message to the queue 
     $_dispatcher->([$source_id,[[time, 0, $object]]]);
 
+    $self;
   };
 
 
@@ -285,20 +290,16 @@ BUILD {
       socket_stage($c, sub {
         $_[1]{data}={
           on_connect=> sub {
-            asay $STDERR, "CONNECTED TO HOST @_";
-            use Data::Dumper;
-            asay Dumper @_;
+            DEBUG and asay $STDERR, "$$ CONNECTED TO HOST @_";
+            DEBUG and asay $STDERR, Dumper @_;
             my $bridge= uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$_[0], wfd=>$_[0]);
-            $_bridges->{$bridge->source_id}=$bridge;
-            $_on_bridge->($bridge);
+            $self->add_bridge($bridge);
           },
 
           on_error=>$_on_error
 
         };
         #asay $STDERR,  "calling usacCONNECT";
-        #use Data::Dumper;
-        #asay Dumper @_;
         &uSAC::IO::connect;
       });
   };
@@ -311,7 +312,7 @@ BUILD {
   $_ht->add(['0', [$_meta_handler, $_uuid], "exact"]);
   
   #Set default
-  $_ht->add([undef,[sub { say "UNKOWN"}, undef],'exact']);
+  $_ht->add([undef,[sub { asay $STDERR, "UNKOWN"}, undef],'exact']);
   $_cache={};
   $_ht_dispatcher=$_ht->prepare_dispatcher(cache=>$_cache);
 
@@ -373,23 +374,22 @@ method server {
   $_on_ready=$cb if $cb;
       use Data::Dumper;
 
-  print Dumper $l;
+  print STDERR Dumper $l;
   uSAC::IO::socket_stage($l, sub {
-      print Dumper @_;
+      print STDERR Dumper @_;
       $_[1]{data}={
         reuse_port=>1,
         reuse_addr=>1,
         on_bind=>\&uSAC::IO::listen,
-        on_listen=>sub {asay "on_listen"; &uSAC::IO::accept; $_on_ready->()},
+        on_listen=>sub {DEBUG and asay $STDERR, "on_listen"; &uSAC::IO::accept; $_on_ready->()},
         on_accept=>sub {
-          uSAC::IO::asay   "ADDING CLIENT=====";
+          DEBUG and uSAC::IO::asay   $STDERR, "ADDING CLIENT=====";
           my $clients=$_[0];
           for my $fd (@$clients){
-            DEBUG and Log::OK::TRACE and asay "--- Client fd is $fd";
+            DEBUG and Log::OK::TRACE and asay $STDERR, "--- Client fd is $fd";
             uSAC::IO::asap(sub {
               my $bridge= uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$fd, wfd=>$fd);
-              $_bridges->{$bridge->source_id}=$bridge;
-              $_on_bridge and $_on_bridge->($bridge);
+              $self->add_bridge($bridge);
             });
           }
         },
@@ -402,9 +402,15 @@ method server {
 
 method add_bridge {
   
-  my ($rfd, $wfd)=@_;
+  #my ($rfd, $wfd)=@_;
+  #uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$rfd, wfd=>$wfd);
+  my $bridge=shift;
   
-  push $_bridges->@*, uSAC::FastPack::Broker::Bridge->new(broker=>$self, rfd=>$rfd, wfd=>$wfd);
+  $_bridges->{$bridge->source_id}=$bridge;
+
+  # TODO: Look through the HT and send all the matchers over the bridge so the remote end will forward messages
+
+  $_on_bridge and $_on_bridge->($bridge);
 
 
 }
@@ -424,6 +430,11 @@ method add_peer_listener {
   # Go through the matchting table and sub scribe to the peer for all matchers
   # both ends do this, which propagates the listing throughout the entire system!
 
+}
+
+method _post_fork {
+  $_uuid=rand 10000;
+  #print STDERR "UPDATING UUID OF BROKER: $_uuid=====\n";
 }
 
 1;

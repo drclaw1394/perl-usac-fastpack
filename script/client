@@ -24,10 +24,10 @@ $node->on_bridge=sub {
       asay "ERROR";
       timer_cancel($t);
       try {
-      $bridge->close;
+        $bridge->close;
       }
       catch($e){
-      asay $STDERR, "bridge close error: $e";
+        asay $STDERR, "bridge close error: $e";
       }
     
     };

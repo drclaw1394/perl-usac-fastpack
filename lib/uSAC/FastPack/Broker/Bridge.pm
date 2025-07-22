@@ -19,16 +19,19 @@ use v5.36;
 use Log::OK;
 use constant::more DEBUG=>0;
 
+no warnings "experimental";
+use Data::Dumper;
 
 use Object::Pad;
 
 class uSAC::FastPack::Broker::Bridge;
+no warnings "experimental";
 
 field $_tx_namespace;
 field $_rx_namespace;
 
-field $_reader;
-field $_writer;
+field $_reader :param = undef;
+field $_writer :param = undef;
 
 field $_rfd :param;
 field $_wfd :param;
@@ -39,14 +42,15 @@ field $_broker :param=undef;
 field $_forward_message_sub :reader;
 
 field $_on_error :mutator;
+field $_pass_through :param = [];
 
 
 BUILD {
   # create a new source_id, messages coming in on this broker are not sent back out!
 
   $_source_id= rand 10000;
-  $_reader=reader($_rfd);
-  $_writer=writer($_wfd);
+  $_reader//=reader($_rfd);
+  $_writer//=writer($_wfd);
 
 
   $_tx_namespace=create_namespace;
@@ -67,13 +71,13 @@ BUILD {
 
       my $cb=$_[1];
       my $buffer="";
-
-      for(@$inputs){
-        $_->[FP_MSG_PAYLOAD] =encode_meta_payload $_->[FP_MSG_PAYLOAD] if $_->[FP_MSG_ID] eq '0';
+      DEBUG and asay $STDERR, "$$ OUT GOING MESSAGES ARE ". Dumper $inputs;
+      for my ($msg, $cap)(@$inputs){
+        $msg->[FP_MSG_PAYLOAD] =encode_meta_payload $msg->[FP_MSG_PAYLOAD] if $msg->[FP_MSG_ID] eq '0';
+        Data::FastPack::encode_fastpack $buffer, [$msg], undef, $_tx_namespace;
       }
 
-      Data::FastPack::encode_fastpack $buffer, $inputs, undef, $_tx_namespace;
-      #say STDERR "BUFFER  lenght is  ". length $buffer;
+      DEBUG and asay $STDERR, "$$ BUFFER  length is  ". length $buffer;
       $next->([$buffer], $cb); 
 
     }
@@ -83,7 +87,7 @@ BUILD {
   => sub { 
     my $next=shift;
     sub {
-      DEBUG and Log::OK::TRACE and asay $STDERR, "FORWARDING MESSAGE==== length ".length $_[0];
+      DEBUG and Log::OK::TRACE and asay $STDERR, "$$ FORWARDING MESSAGE==== length ".length $_[0][0];
       &$next
     }
   }
@@ -94,18 +98,23 @@ BUILD {
   #
 
   use Data::Dumper;
+  asay $STDERR, " ABOUT TO SET ON READE FOR READER";
   $_reader->on_read=linker 
-  sub { my $next=shift; sub { asay $STDERR, "ON READ......"; &$next}}
+  sub { my $next=shift; sub { DEBUG and asay $STDERR, "$$ ON READ......". length $_[0][0];DEBUG and asay $STDERR, "$$ Dump".$_[0][0]; ; &$next}}
 
+  #=> 
   => sub {
     my ($next, $index, %options)=@_;
     sub{
       my $outputs=[];
       my $cb=$_[1];
 
+      DEBUG and asay $STDERR,"$$ Decoding messages in comming bridge packet length". length $_[0][0];
       Data::FastPack::decode_fastpack $_[0][0], $outputs, undef, $_rx_namespace;
 
+      DEBUG and asay $STDERR,"$$ Decoding messages in comming bridge packet length after". length $_[0][0];
       for(@{$outputs}){
+        DEBUG and asay $STDERR, "$$ OUTPUT ". Dumper $_;
         if($_->[FP_MSG_ID] eq '0' ){
           $_->[FP_MSG_PAYLOAD] =decode_meta_payload $_->[FP_MSG_PAYLOAD];
           for($_->[FP_MSG_PAYLOAD]{listen}){
@@ -116,7 +125,7 @@ BUILD {
           }
         }
       }
-      DEBUG and Log::OK::TRACE and asay $STDERR, "DECODE FASTPACK====";
+      #DEBUG and Log::OK::TRACE and asay $STDERR, "DECODE FASTPACK====";
 
       $next->([$_source_id, $outputs], $cb);
 
@@ -125,17 +134,17 @@ BUILD {
   }
 
 
-  => sub { my $next=shift; sub { asay $STDERR, Dumper @_; &$next}}
+  #=> sub { my $next=shift; sub { asay $STDERR, Dumper @_; &$next}}
   => $dispatch;
 
 
   # We want meta messages to be forwared
-  DEBUG and Log::OK::TRACE and asay $STDERR, "$_source_id: Bridge id about to listen is registering meta";
-  $_broker->listen($_source_id, '0', $_forward_message_sub, "exact");
+  DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_source_id: Bridge id about to listen is registering meta";
+  #$_broker->listen($_source_id, '0', $_forward_message_sub, "exact");
 
   $_writer->on_error=$_reader->on_error=
   $_reader->on_eof=sub {
-    DEBUG and Log::OK::TRACE and asay $STDERR, "CLOSING THE CONNECTION";
+    DEBUG and Log::OK::TRACE and asay $STDERR, "$$ CLOSING THE CONNECTION";
     $_reader->pause;
     my $obj={ignore=>{sub=>$_forward_message_sub, bridge_close=>1}};
     $dispatch->([$_source_id, [[time, 0, $obj]]]);
@@ -147,7 +156,7 @@ BUILD {
 }
 
 method close {
-  DEBUG and Log::OK::TRACE and asay $STDERR, "--CONNECTION CLOSED";
+  DEBUG and Log::OK::TRACE and asay $STDERR, "$$ --CONNECTION CLOSED";
   if($_reader){
     $_reader->pause;
     $_reader=undef;
