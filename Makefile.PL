@@ -8,6 +8,7 @@ WriteMakefile(
     PREREQ_PM         => {
       'Data::FastPack'=> v0.2.0,
       'Sub::Middler'   => v0.4.0,
+      'Hustle::Table' => v0.9.0,
     }, 
     ABSTRACT_FROM     => 'lib/uSAC/FastPack/Broker.pod', # retrieve abstract from module
     AUTHOR            => 'Ruben Westerberg <drclaw@mac.com>',
