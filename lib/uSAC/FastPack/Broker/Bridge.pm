@@ -98,7 +98,7 @@ BUILD {
   #
 
   use Data::Dumper;
-  asay $STDERR, " ABOUT TO SET ON READE FOR READER";
+  #asay $STDERR, " ABOUT TO SET ON READE FOR READER";
   $_reader->on_read=linker 
   sub { my $next=shift; sub { DEBUG and asay $STDERR, "$$ ON READ......". length $_[0][0];DEBUG and asay $STDERR, "$$ Dump".$_[0][0]; ; &$next}}
 

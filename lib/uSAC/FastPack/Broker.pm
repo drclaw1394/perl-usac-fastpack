@@ -213,26 +213,36 @@ BUILD {
                 $type=$v->{type};
                 my $force=$v->{bridge_close};
 
+                $name=qr{$name} if !$type;
+                #Log::OK::TRACE and asay $STDERR,  "IGNOREING TOPIC? $source_id $name  $sub $type";
+
+
                 my $found;
                 my $pos=0;
                 for my $e(reverse 0..$_ht->@*-2){
+                    ##################################################################
+                    # asay $STDERR, "matcher ". $_ht->[$e][Hustle::Table::matcher_]; #
+                    # asay $STDERR, "name    ". $name;                               #
+                    # asay $STDERR, "type". $_ht->[$e][Hustle::Table::type_];        #
+                    # asay $STDERR, "tpe    ". $type;                                #
+                    ##################################################################
                   if($force or ($_ht->[$e][Hustle::Table::matcher_] eq $name and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
-
+                    #asay $STDERR, "Matcher and type found";
                     # Remove sub from list
                     for my ($j, $i) (reverse 0..$_ht->[$e]->[Hustle::Table::value_]->@*-1){
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ -- j is $j  and i is $i";
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ -----serching $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                      Log::OK::TRACE and asay $STDERR,  "$$ -- j is $j  and i is $i";
+                      Log::OK::TRACE and asay $STDERR,  "$$ -----serching $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                       
                       if($_ht->[$e]->[Hustle::Table::value_][$i] == $sub and
                         $_ht->[$e]->[Hustle::Table::value_][$j] eq $source_id){
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ -----unregister $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                        #Log::OK::TRACE and asay $STDERR,  "$$ -----unregister $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                         splice $_ht->[$e]->[Hustle::Table::value_]->@*, $i, 2;
                         $found=1;
 
                       }
                     }
                     unless($_ht->[$e][Hustle::Table::value_]->@*){
-                      DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ __REMOVING FROM HUSTLE TABLE at post $e----";
+                      #Log::OK::TRACE and asay $STDERR,  "$$ __REMOVING FROM HUSTLE TABLE at post $e----";
                       # all entries have been removed so remove from table
                       splice $_ht->@*, $e, 1;
                     }
@@ -260,7 +270,7 @@ BUILD {
   # 
 
   $_ignorer_sub=sub {
-    
+    DEBUG and asay $STDERR, "---broker ignore called"; 
     if(@_==2){
       unshift @_, undef;
     }
@@ -312,7 +322,8 @@ BUILD {
   $_ht->add(['0', [$_meta_handler, $_uuid], "exact"]);
   
   #Set default
-  $_ht->add([undef,[sub { asay $STDERR, "UNKOWN"}, undef],'exact']);
+  #$_ht->add([undef,[sub { asay $STDERR, "UNKOWN"}, undef],'exact']);
+  $_ht->add([undef,[sub { }, undef],'exact']);
   $_cache={};
   $_ht_dispatcher=$_ht->prepare_dispatcher(cache=>$_cache);
 
