@@ -71,9 +71,11 @@ BUILD {
 
       my $cb=$_[1];
       my $buffer="";
-      DEBUG and asay $STDERR, "$$ OUT GOING MESSAGES ARE ". Dumper $inputs;
+      #DEBUG and 
+      #asay $STDERR, "$$ OUT GOING MESSAGES ARE ". Dumper $inputs;
       for my ($msg, $cap)(@$inputs){
         $msg->[FP_MSG_PAYLOAD] =encode_meta_payload $msg->[FP_MSG_PAYLOAD] if $msg->[FP_MSG_ID] eq '0';
+        #asay $STDERR, "Payload out is $msg->[FP_MSG_PAYLOAD]";
         Data::FastPack::encode_fastpack $buffer, [$msg], undef, $_tx_namespace;
       }
 
@@ -111,6 +113,7 @@ BUILD {
 
       DEBUG and asay $STDERR,"$$ Decoding messages in comming bridge packet length". length $_[0][0];
       Data::FastPack::decode_fastpack $_[0][0], $outputs, undef, $_rx_namespace;
+      #asay $STDERR, "BUffer is ". $_[0];
 
       DEBUG and asay $STDERR,"$$ Decoding messages in comming bridge packet length after". length $_[0][0];
       for(@{$outputs}){
@@ -145,7 +148,7 @@ BUILD {
   $_writer->on_error=$_reader->on_error=
   $_reader->on_eof=sub {
     DEBUG and Log::OK::TRACE and asay $STDERR, "$$ CLOSING THE CONNECTION";
-    $_reader->pause;
+    $_reader->pause if $_reader;
     my $obj={ignore=>{sub=>$_forward_message_sub, bridge_close=>1}};
     $dispatch->([$_source_id, [[time, 0, $obj]]]);
     &$_on_error if $_on_error;

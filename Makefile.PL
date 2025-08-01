@@ -7,7 +7,7 @@ WriteMakefile(
     VERSION_FROM      => 'lib/uSAC/FastPack/Broker.pm', # finds $VERSION, requires EU::MM from perl >= 5.5
     PREREQ_PM         => {
       'Data::FastPack'=> v0.2.0,
-      'Sub::Middler'   => v0.4.0,
+      'Sub::Middler'  => v0.4.0,
       'Hustle::Table' => v0.7.1,
     }, 
     ABSTRACT_FROM     => 'lib/uSAC/FastPack/Broker.pod', # retrieve abstract from module
