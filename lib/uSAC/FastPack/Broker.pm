@@ -99,6 +99,8 @@ BUILD {
         }
       }
     }
+    # Force clean cache from ht_dispatcher
+    %$_cache=();
   };
 
   # Create broadcaster sub
@@ -207,7 +209,7 @@ BUILD {
 
               elsif($k eq "ignore"){
                 # Search the hustle table entries for a match against the matcher
-
+                #asay $STDERR, "DOING IGNORE";
                 $name=$v->{matcher};
                 $sub=$v->{sub};
                 $type=$v->{type};
@@ -215,6 +217,7 @@ BUILD {
 
                 $name=qr{$name} if !$type;
                 #Log::OK::TRACE and asay $STDERR,  "IGNOREING TOPIC? $source_id $name  $sub $type";
+                #asay $STDERR,  "IGNOREING TOPIC? $source_id $name  $sub $type";
 
 
                 my $found;
@@ -243,8 +246,11 @@ BUILD {
                     }
                     unless($_ht->[$e][Hustle::Table::value_]->@*){
                       #Log::OK::TRACE and asay $STDERR,  "$$ __REMOVING FROM HUSTLE TABLE at post $e----";
+                      #asay $STDERR,  "$$ __REMOVING FROM HUSTLE TABLE at post $e----";
+                      #asay $STDERR,  "Length before: ".$_ht->@*;;
                       # all entries have been removed so remove from table
                       splice $_ht->@*, $e, 1;
+                      #asay $STDERR,  "Length after: ".$_ht->@*;;
                     }
 
                     #last;
