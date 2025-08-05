@@ -88,6 +88,8 @@ BUILD {
   }
   => sub { 
     my $next=shift;
+    use Scalar::Util qw<weaken>;
+    weaken($next);
     sub {
       DEBUG and Log::OK::TRACE and asay $STDERR, "$$ FORWARDING MESSAGE==== length ".length $_[0][0];
       &$next
@@ -148,7 +150,7 @@ BUILD {
   $_writer->on_error=$_reader->on_error=
   $_reader->on_eof=sub {
     DEBUG and Log::OK::TRACE and asay $STDERR, "$$ CLOSING THE CONNECTION";
-    $_reader->pause if $_reader;
+    #$_reader->pause if $_reader;
     my $obj={ignore=>{sub=>$_forward_message_sub, bridge_close=>1}};
     $dispatch->([$_source_id, [[time, 0, $obj]]]);
     &$_on_error if $_on_error;

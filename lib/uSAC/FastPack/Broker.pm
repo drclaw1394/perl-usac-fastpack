@@ -27,7 +27,7 @@ class uSAC::FastPack::Broker;
 no warnings "experimental";
 field $_ht;  # Main rule table for published messages
 field $_ht_dispatcher;   # The built ht dispature
-field $_cache;        # Cache for the ht 
+field $_cache :param = {};        # Cache for the ht 
 field $_ns;           # Namespace common to all connection sends to brocker
                       # allows encoding only once for multiple subscriptions
 
@@ -55,7 +55,7 @@ BUILD {
 
   # Configure table
   $_ht=Hustle::Table->new();
-
+  $_cache//={};
   $_bridges={};
 
   $_uuid=rand 10000;
@@ -99,8 +99,6 @@ BUILD {
         }
       }
     }
-    # Force clean cache from ht_dispatcher
-    %$_cache=();
   };
 
   # Create broadcaster sub
@@ -432,6 +430,11 @@ method add_bridge {
 
 }
 
+method remove_bridge {
+  my $bridge=shift;
+  delete $_bridges->{$bridge->source_id};
+}
+
 # A peer is a broker/client on the other end of the the connection
 # assign an id internally
 # This method is called by a stub client and connection creation to allow
@@ -452,6 +455,11 @@ method add_peer_listener {
 method _post_fork {
   $_uuid=rand 10000;
   #print STDERR "UPDATING UUID OF BROKER: $_uuid=====\n";
+}
+
+method clear_cache {
+    # Force clean cache
+    %$_cache=();
 }
 
 1;
