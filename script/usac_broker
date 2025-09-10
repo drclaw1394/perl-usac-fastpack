@@ -2,7 +2,6 @@
 #
 
 use v5.36;
-use Data::Dumper;
 use uSAC::IO;
 use uSAC::FastPack::Broker;
 use Data::Dumper;
@@ -20,21 +19,36 @@ sub do_connect;
 
 
 $node->on_ready=sub {
-  asay "Server running";
+  asay $STDERR, "Server running";
 };
 
 $node->on_bridge=sub {
- asay "GOT a new bridge:";
+ asay $STDERR, "GOT a new bridge:";
+ $node->listen("test", $_[0]);
+ 
+ ###############################################
+ # $node->listen(undef, "test", sub {          #
+ #     asay $STDERR, "GOT MESSAGE ".Dumper @_; #
+ #     $STDERR->flush();                       #
+ #     });                                     #
+ ###############################################
 };
 
 $node->server($l);
 
 timer 0, 1, sub {
+  asay $STDERR , "timer ";
   $node->broadcast(undef, "test", "value");
+  $STDERR->flush();
 };
 
+$node->listen(undef, "test", sub {
+      asay $STDERR, "GOT MESSAGE ".Dumper @_;
+      $STDERR->flush();
+});
 
 
-asay "AT THE END";
+
+asay $STDERR, "AT THE END";
 
 1;

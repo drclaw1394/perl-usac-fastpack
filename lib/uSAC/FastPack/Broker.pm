@@ -137,6 +137,13 @@ BUILD {
     my $sub=shift;
     my $type=shift//$_default_match_mode;
   
+    #  Here check if sub is actually a bridge
+    if($sub isa uSAC::FastPack::Broker::Bridge){
+      print STDERR " sub is a bridge";
+        $source_id=$sub->source_id;
+        #$self->add_bridge($sub);
+        $sub=$sub->forward_message_sub;
+    }
     #die 'Cannot listen for an unamed message' unless $name;
 
     my $object={listen=>{source=>$source_id, matcher=>$name, type=>$type, sub=>$sub}};
@@ -201,6 +208,12 @@ BUILD {
                   # rebuild the dispatcher
                   $_cache={}; 
                   $_ht_dispatcher=$_ht->prepare_dispatcher(cache=>$_cache);
+                  unless($_ht_dispatcher){
+                    Log::OK::FATAL and  asay $STDERR, Error::Show::context $@;
+                    die "COULD NOT CREATE DISPACHER in ".__PACKAGE__;
+                     
+                  }
+
                 }
 
               }
@@ -302,6 +315,7 @@ BUILD {
       $_on_bridge=$cb if $cb;
 
       socket_stage($c, sub {
+            asay $STDERR, "$$ make socket @_";
         $_[1]{data}={
           on_connect=> sub {
             DEBUG and asay $STDERR, "$$ CONNECTED TO HOST @_";
@@ -391,7 +405,8 @@ method server {
 
   print STDERR Dumper $l;
   uSAC::IO::socket_stage($l, sub {
-      print STDERR Dumper @_;
+
+      asay $STDERR, 'Abouto bind '.Dumper @_;
       $_[1]{data}={
         reuse_port=>1,
         reuse_addr=>1,

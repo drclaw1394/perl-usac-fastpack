@@ -14,14 +14,15 @@ my %config;
 
 use feature "try";
 
-asay "DO CONNECT";
+asay $STDERR, "DO CONNECT";
 my $c="po=6123,t=stream,f=INET\$,i=lo";
 my $bridge;
 my $t;
 $node->on_bridge=sub {
+    asay $STDERR, "GOT A BRIDGE";
     $bridge=$_[0];
     $bridge->on_error=sub {
-      asay "ERROR";
+      asay $STDERR, "ERROR";
       timer_cancel($t);
       try {
         $bridge->close;
@@ -31,18 +32,23 @@ $node->on_bridge=sub {
       }
     
     };
-      asay "CONNECTED OK";
-      $node->listen(undef, "test", sub {
-            asay "GOT MESSAGE ".Dumper @_;
-      });
+    asay $STDERR, "CONNECTED OK";
+    $node->listen("test", $_[0]);
 };
 
 
 $node->connect($c);
 
+$node->listen(undef, "test", sub {
+      asay $STDERR, "GOT MESSAGE ".Dumper @_;
+      $STDERR->flush();
+});
+
 
 $t=uSAC::IO::timer 0, 1, sub {
+  asay $STDERR, "timer";
   $node->broadcast(undef, "test", "value"x10);
+  $STDERR->flush();
 };
 
 
