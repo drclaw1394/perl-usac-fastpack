@@ -11,7 +11,7 @@
 #
 package uSAC::FastPack::Broker::Bridge;
 use Sub::Middler;
-use uSAC::FastPack;
+#use uSAC::FastPack;
 use Data::FastPack;
 use Data::FastPack::Meta;
 use uSAC::IO;
@@ -20,7 +20,8 @@ use Log::OK;
 use constant::more DEBUG=>0;
 
 no warnings "experimental";
-use Data::Dumper;
+#use Data::Dumper;
+sub Dumper{};
 
 use Object::Pad;
 
@@ -101,7 +102,6 @@ BUILD {
   # Link the output of reader to decoder middleware
   #
 
-  use Data::Dumper;
   #asay $STDERR, " ABOUT TO SET ON READE FOR READER";
   $_reader->on_read=linker 
   sub { my $next=shift; sub { DEBUG and asay $STDERR, "$$ ON READ......". length $_[0][0];DEBUG and asay $STDERR, "$$ Dump".$_[0][0]; ; &$next}}

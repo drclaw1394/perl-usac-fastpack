@@ -45,7 +45,7 @@ $node->listen(undef, "test", sub {
 });
 
 
-$t=uSAC::IO::timer 0, 1, sub {
+$t=uSAC::IO::timer 0, 0.01, sub {
   asay $STDERR, "timer";
   $node->broadcast(undef, "test", "value"x10);
   $STDERR->flush();

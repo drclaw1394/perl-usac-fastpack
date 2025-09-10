@@ -36,16 +36,20 @@ $node->on_bridge=sub {
 
 $node->server($l);
 
-timer 0, 1, sub {
-  asay $STDERR , "timer ";
-  $node->broadcast(undef, "test", "value");
-  $STDERR->flush();
-};
+###############################################
+# timer 0, 1, sub {                           #
+#   asay $STDERR , "timer ";                  #
+#   $node->broadcast(undef, "test", "value"); #
+#   $STDERR->flush();                         #
+# };                                          #
+###############################################
 
-$node->listen(undef, "test", sub {
-      asay $STDERR, "GOT MESSAGE ".Dumper @_;
-      $STDERR->flush();
-});
+#################################################
+# $node->listen(undef, "test", sub {            #
+#       asay $STDERR, "GOT MESSAGE ".Dumper @_; #
+#       $STDERR->flush();                       #
+# });                                           #
+#################################################
 
 
 

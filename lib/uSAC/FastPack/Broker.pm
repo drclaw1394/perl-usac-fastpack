@@ -20,7 +20,7 @@ use uSAC::FastPack::Broker::Bridge;
 use Hustle::Table;
 use constant::more qw<READER=0 WRITER WRITER_SUB>;
 
-use Data::Dumper;
+sub Dumper{};
 
 class uSAC::FastPack::Broker;
 
@@ -401,9 +401,7 @@ method server {
   my $l=shift;
   my $cb=shift;
   $_on_ready=$cb if $cb;
-      use Data::Dumper;
 
-  print STDERR Dumper $l;
   uSAC::IO::socket_stage($l, sub {
 
       asay $STDERR, 'Abouto bind '.Dumper @_;
