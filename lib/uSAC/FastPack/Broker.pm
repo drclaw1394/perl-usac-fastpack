@@ -188,9 +188,17 @@ BUILD {
                 # Search the hustle table entries for a match against the matcher
                 my $found;
                 for my $e($_ht->@*){
-
                   no warnings "uninitialized";
-                  if($e->[Hustle::Table::matcher_] eq $name and $e->[Hustle::Table::type_] eq $type){
+                  use re "regexp_pattern";
+
+                  my ($pattern_1, undef)=regexp_pattern($e->[Hustle::Table::matcher_]);
+                  $pattern_1//=$e->[Hustle::Table::matcher_];
+
+                  my ($pattern_2, undef)=regexp_pattern($name);
+                  $pattern_2//=$name;
+
+                  if($pattern_1 eq $pattern_2 and $e->[Hustle::Table::type_] eq $type){
+                  #if($e->[Hustle::Table::matcher_] eq $name and $e->[Hustle::Table::type_] eq $type){
                     push $e->[Hustle::Table::value_]->@*, $sub, $source_id;
                     $found=1;
 
@@ -240,7 +248,15 @@ BUILD {
                     # asay $STDERR, "type". $_ht->[$e][Hustle::Table::type_];        #
                     # asay $STDERR, "tpe    ". $type;                                #
                     ##################################################################
-                  if($force or ($_ht->[$e][Hustle::Table::matcher_] eq $name and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
+                  use re "regexp_pattern";
+                  my ($pattern_1, undef)=regexp_pattern($_ht->[$e]->[Hustle::Table::matcher_]);
+                  $pattern_1//=$_ht->[$e]->[Hustle::Table::matcher_];
+
+                  my ($pattern_2, undef)=regexp_pattern($name);
+                  $pattern_2//=$name;
+
+                  if($force or ($pattern_1 eq $pattern_2 and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
+                    #if($force or ($_ht->[$e][Hustle::Table::matcher_] eq $name and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
                     #asay $STDERR, "Matcher and type found";
                     # Remove sub from list
                     for my ($j, $i) (reverse 0..$_ht->[$e]->[Hustle::Table::value_]->@*-1){
