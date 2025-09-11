@@ -1,0 +1,42 @@
+@{[ init {
+
+  output location=>"home", title=>"Upload";
+
+  use File::ShareDir ":ALL";
+  my $share=dist_dir "DGRT-Inspection-Web";
+  my $parent_root= "$share/src";
+
+  inherit  "templates/dgrt.plt", $parent_root;
+
+  lander location=>"/", name=>"index.html";
+
+  use Data::FastPack::App;
+  Data::FastPack::App::add_to_jpack_container(sys_path_build);
+
+
+}
+]}
+
+<html>
+  <head>
+    <script src="@{[res "../js/usac-fastpack-broker.js"]}"></script>
+    <script src="@{[plt_res "usac-fastpack-broker-test.js"]}"></script>
+  </head>
+  <body>
+    <script>
+      window.onload=(e)=>{
+        console.log("ON LOAD");
+        chunkLoader.ready
+          .then(()=>{
+            console.log("LOAD APP HERE");
+            return chunkLoader.app();
+          })
+          .then(()=>{
+            console.log(" SHOULD LOAD CSS HERE");
+            return chunkLoader.css();
+          })
+      };
+    </script>
+
+  </body>
+</html>
