@@ -2,13 +2,13 @@
 use v5.36;
 use uSAC::IO;
 use uSAC::FastPack::Broker;
-use uSAC::FastPack::Broker::Bridge;
+use uSAC::FastPack::Broker::Bridge::Streaming;
 
 use Test::More;
 
 my $node=$uSAC::Main::Default_Broker;
 
-my $bridge=uSAC::FastPack::Broker::Bridge->new(broker=>$node, rfd=>0, wfd=>2);
+my $bridge=uSAC::FastPack::Broker::Bridge::Streaming->new(broker=>$node, rfd=>0, wfd=>2);
 
 ok defined $bridge;
 

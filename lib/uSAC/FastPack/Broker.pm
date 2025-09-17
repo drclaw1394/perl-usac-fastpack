@@ -13,6 +13,7 @@ use Object::Pad;
 
 use Data::FastPack;
 use Data::FastPack::Meta;
+use UUID qw<uuid4>;
 
 
 use uSAC::FastPack::Broker::Bridge;
@@ -58,8 +59,8 @@ BUILD {
   $_cache//={};
   $_bridges={};
 
-  $_uuid=rand 10000;
-  $_default_source_id= rand 10000;
+  $_uuid=uuid4;#rand 10000;
+  $_default_source_id= uuid4;#rand 10000;
   
   $_dispatcher=sub {
     DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_uuid : In dispatcher";
@@ -228,11 +229,13 @@ BUILD {
 
               elsif($k eq "ignore"){
                 # Search the hustle table entries for a match against the matcher
-                #asay $STDERR, "DOING IGNORE";
+                asay $STDERR, "DOING IGNORE";
                 $name=$v->{matcher};
                 $sub=$v->{sub};
                 $type=$v->{type};
-                my $force=$v->{bridge_close};
+                my $force_sub=$v->{force} =~ /sub/;
+                my $force_source=$v->{force} =~ /source/;
+                my $force_matcher=$v->{force} =~ /matcher/;
 
                 $name=qr{$name} if !$type;
                 #Log::OK::TRACE and asay $STDERR,  "IGNOREING TOPIC? $source_id $name  $sub $type";
@@ -242,12 +245,6 @@ BUILD {
                 my $found;
                 my $pos=0;
                 for my $e(reverse 0..$_ht->@*-2){
-                    ##################################################################
-                    # asay $STDERR, "matcher ". $_ht->[$e][Hustle::Table::matcher_]; #
-                    # asay $STDERR, "name    ". $name;                               #
-                    # asay $STDERR, "type". $_ht->[$e][Hustle::Table::type_];        #
-                    # asay $STDERR, "tpe    ". $type;                                #
-                    ##################################################################
                   use re "regexp_pattern";
                   my ($pattern_1, undef)=regexp_pattern($_ht->[$e]->[Hustle::Table::matcher_]);
                   $pattern_1//=$_ht->[$e]->[Hustle::Table::matcher_];
@@ -255,17 +252,18 @@ BUILD {
                   my ($pattern_2, undef)=regexp_pattern($name);
                   $pattern_2//=$name;
 
-                  if($force or ($pattern_1 eq $pattern_2 and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
+                  # Force penetrates the loop, the patterns and types are ignored. Whe only check subs
+                  if($force_matcher or ($pattern_1 eq $pattern_2 and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
                     #if($force or ($_ht->[$e][Hustle::Table::matcher_] eq $name and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
-                    #asay $STDERR, "Matcher and type found";
                     # Remove sub from list
+                    # Force disables the client id check and tests the sub only
                     for my ($j, $i) (reverse 0..$_ht->[$e]->[Hustle::Table::value_]->@*-1){
                       Log::OK::TRACE and asay $STDERR,  "$$ -- j is $j  and i is $i";
-                      Log::OK::TRACE and asay $STDERR,  "$$ -----serching $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                      Log::OK::TRACE and asay $STDERR,  "$$ -----serching $pattern_1 with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                       
-                      if($_ht->[$e]->[Hustle::Table::value_][$i] == $sub and
-                        $_ht->[$e]->[Hustle::Table::value_][$j] eq $source_id){
-                        #Log::OK::TRACE and asay $STDERR,  "$$ -----unregister $_ht->[$e]->[Hustle::Table::matcher_] with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                      if(($force_sub or ($_ht->[$e]->[Hustle::Table::value_][$i] == $sub)) and
+                        ($force_source or ($_ht->[$e]->[Hustle::Table::value_][$j] eq $source_id))){
+                        Log::OK::TRACE and asay $STDERR,  "$$ -----unregister $pattern_1 with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                         splice $_ht->[$e]->[Hustle::Table::value_]->@*, $i, 2;
                         $found=1;
 
@@ -287,12 +285,14 @@ BUILD {
                 $_cache={}; 
                 $_ht_dispatcher=$_ht->prepare_dispatcher(cache=>$_cache);
 
-                if($force){
-                  DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ Looking for bidge  $source_id";
-                  my $b=delete $_bridges->{$source_id};
-                  DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ found  bidge  $b";
-                  $b->close if $b;
-                }
+                #####################################################################################
+                # if($force){                                                                       #
+                #   DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ Looking for bidge  $source_id"; #
+                #   my $b=delete $_bridges->{$source_id};                                           #
+                #   DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ found  bidge  $b";              #
+                #   $b->close if $b;                                                                #
+                # }                                                                                 #
+                #####################################################################################
               }
 
             }
@@ -308,12 +308,13 @@ BUILD {
       unshift @_, undef;
     }
     my $source_id=shift;#//$_default_source_id;
-    my $name=shift;
-    my $sub=shift;
-    my $type=shift//$_default_match_mode;
+    my $name= shift;
+    my $sub=  shift;
+    my $type= shift//$_default_match_mode;
+    my $force=shift;
   
-    die 'Cannot listen for an unamed message' unless $name;
-    my $object={ignore=>{source=>$source_id, matcher=>$name, type=>$type, sub=>$sub}};
+    #die 'Cannot ignore for an unamed message' unless $name and $force=
+    my $object={ignore=>{source=>$source_id, matcher=>$name, type=>$type, sub=>$sub, force=>$force}};
 
     # Add message to the queue 
     $_dispatcher->([$source_id,[[time, 0, $object]]]);
@@ -482,7 +483,7 @@ method add_peer_listener {
 }
 
 method _post_fork {
-  $_uuid=rand 10000;
+  $_uuid=uuid4;#rand 10000;
   #print STDERR "UPDATING UUID OF BROKER: $_uuid=====\n";
 }
 

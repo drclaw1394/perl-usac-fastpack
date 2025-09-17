@@ -1,6 +1,6 @@
 =head1 NAME 
 
-  uSAC::FastPack::Broker - Asynchronous local and Remote applciation Broker
+uSAC::FastPack - Asynchronous local and Remote applciation Broker
 
 =head1 SYNOPSIS
 

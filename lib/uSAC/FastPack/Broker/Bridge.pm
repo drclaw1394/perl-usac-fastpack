@@ -14,8 +14,10 @@ use Sub::Middler;
 #use uSAC::FastPack;
 use Data::FastPack;
 use Data::FastPack::Meta;
+use UUID qw<uuid4>;
 use uSAC::IO;
 use v5.36;
+use uSAC::Log;
 use Log::OK;
 use constant::more DEBUG=>0;
 
@@ -31,27 +33,30 @@ no warnings "experimental";
 field $_tx_namespace;
 field $_rx_namespace;
 
-field $_reader :param = undef;
-field $_writer :param = undef;
-
-field $_rfd :param;
-field $_wfd :param;
 
 # Local to this host running this code
 field $_source_id :reader;
-field $_broker :param=undef;
-field $_forward_message_sub :reader;
+field $_broker :reader :param=undef;
 
-field $_on_error :mutator;
+# Call this with message objecst to forward across the bridge the peer
+field $_forward_message_sub;# :reader;
+
+# The sub to call with a buffer of serialized data,
+field $_buffer_out_sub :mutator;
+#field $_buffer_out_wrapper;
+
+# The sub which is called with new data to parse
+field $_on_read_handler :mutator;
+
+
 field $_pass_through :param = [];
 
 
 BUILD {
+  #say "BUILD IN BASE";
   # create a new source_id, messages coming in on this broker are not sent back out!
 
-  $_source_id= rand 10000;
-  $_reader//=reader($_rfd);
-  $_writer//=writer($_wfd);
+  $_source_id= uuid4;#rand 10000;
 
 
   $_tx_namespace=create_namespace;
@@ -62,48 +67,12 @@ BUILD {
 
   # Link the encoder middler to the writer for messages destined for remote end of the bridge
 
-  $_forward_message_sub = linker 
-  sub {
-    my ($next, $index, %options)=@_;
-    sub {
-      #my $source=$_[0];
-      my $source=shift @{$_[0]};
-      my $inputs=$_[0][0];
-
-      my $cb=$_[1];
-      my $buffer="";
-      #DEBUG and 
-      #asay $STDERR, "$$ OUT GOING MESSAGES ARE ". Dumper $inputs;
-      for my ($msg, $cap)(@$inputs){
-        $msg->[FP_MSG_PAYLOAD] =encode_meta_payload $msg->[FP_MSG_PAYLOAD] if $msg->[FP_MSG_ID] eq '0';
-        #asay $STDERR, "Payload out is $msg->[FP_MSG_PAYLOAD]";
-        Data::FastPack::encode_fastpack $buffer, [$msg], undef, $_tx_namespace;
-      }
-
-      DEBUG and asay $STDERR, "$$ BUFFER  length is  ". length $buffer;
-      $next->([$buffer], $cb); 
-
-    }
-
-
-  }
-  => sub { 
-    my $next=shift;
-    use Scalar::Util qw<weaken>;
-    weaken($next);
-    sub {
-      DEBUG and Log::OK::TRACE and asay $STDERR, "$$ FORWARDING MESSAGE==== length ".length $_[0][0];
-      &$next
-    }
-  }
-  =>$_writer->writer;
-
 
   # Link the output of reader to decoder middleware
   #
 
   #asay $STDERR, " ABOUT TO SET ON READE FOR READER";
-  $_reader->on_read=linker 
+  $_on_read_handler=linker 
   sub { my $next=shift; sub { DEBUG and asay $STDERR, "$$ ON READ......". length $_[0][0];DEBUG and asay $STDERR, "$$ Dump".$_[0][0]; ; &$next}}
 
   #=> 
@@ -134,7 +103,6 @@ BUILD {
 
       $next->([$_source_id, $outputs], $cb);
 
-
     }
   }
 
@@ -147,32 +115,68 @@ BUILD {
   DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_source_id: Bridge id about to listen is registering meta";
   #$_broker->listen($_source_id, '0', $_forward_message_sub, "exact");
 
-  $_writer->on_error=$_reader->on_error=
-  $_reader->on_eof=sub {
-    DEBUG and Log::OK::TRACE and asay $STDERR, "$$ CLOSING THE CONNECTION";
-    #$_reader->pause if $_reader;
-    my $obj={ignore=>{sub=>$_forward_message_sub, bridge_close=>1}};
-    $dispatch->([$_source_id, [[time, 0, $obj]]]);
-    &$_on_error if $_on_error;
-  };
 
-  $_reader->start;
+}
+
+#  Must have the output_buffer_sub set before calling this
+method forward_message_sub {
+  asay $STDERR, "calling forward message sub";
+  die "Now output_buffer_set. Cannot make forward_message_sub" unless ref $_buffer_out_sub eq "CODE";
+  asay $STDERR, "calling forward message sub/// didn't die";
+  #$_buffer_out_wrapper= sub {goto $_buffer_out_sub};
+  $_forward_message_sub //= linker 
+  sub {
+    my ($next, $index, %options)=@_;
+    sub {
+      #my $source=$_[0];
+      my $source=shift @{$_[0]};
+      my $inputs=$_[0][0];
+
+      my $cb=$_[1];
+      my $buffer="";
+      #DEBUG and 
+      #asay $STDERR, "$$ OUT GOING MESSAGES ARE ". Dumper $inputs;
+      my @ins;
+      for my ($msg, $cap)(@$inputs){
+        $msg->[FP_MSG_PAYLOAD] =encode_meta_payload $msg->[FP_MSG_PAYLOAD] if $msg->[FP_MSG_ID] eq '0';
+        #asay $STDERR, "Payload out is $msg->[FP_MSG_PAYLOAD]";
+        push @ins, $msg;
+      }
+      Data::FastPack::encode_fastpack $buffer, \@ins, undef, $_tx_namespace;
+
+      DEBUG and asay $STDERR, "$$ BUFFER  length is  ". length $buffer;
+      $next->([$buffer], $cb); 
+
+    }
+
+
+  }
+  => sub { 
+    my $next=shift;
+    use Scalar::Util qw<weaken>;
+    weaken($next);
+    sub {
+      DEBUG and Log::OK::TRACE and asay $STDERR, "$$ FORWARDING MESSAGE==== length ".length $_[0][0];
+      &$next
+    }
+  }
+  #=>$_writer->writer;
+  =>$_buffer_out_sub;
+  #=>$_buffer_out_wrapper;
 
 }
 
 method close {
-  DEBUG and Log::OK::TRACE and asay $STDERR, "$$ --CONNECTION CLOSED";
-  if($_reader){
-    $_reader->pause;
-    $_reader=undef;
-    IO::FD::close($_rfd);
-  }
-  if($_writer){
-    $_writer->pause;
-    $_writer=undef;
-    IO::FD::close($_wfd);
-  }
+  asay $STDERR, "CLOSE BRIDGE CALLED";
+  # here we attempt to remove the matching entires from the broker,
+  # They may never exisisted, but we attempt to remove anyway
+  # The force flag means the broker will only compare the sub, not the source, or matcher
+    my $dispatch=$_broker->get_dispatcher;
+    my $obj={ignore=>{source=> $_source_id, sub=>$_forward_message_sub, force=>"matcher source"}};
+    $dispatch->([$_source_id, [[time, 0, $obj]]]);
 }
+
+
 
 
 1;
