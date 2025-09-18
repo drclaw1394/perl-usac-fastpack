@@ -69,6 +69,7 @@ class HustleTable {
 class uSACFastPackBrokerBridge {
   constructor(broker){
 
+    broker||=new uSACFastPackBroker();
     this.broker=broker;
 
     // rx ns converts inboud codes to ids from remote 
@@ -150,36 +151,49 @@ class uSACFastPackBrokerBridge {
   }
 }
 
-/****************************************************************************/
-/* class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge {      */
-/*                                                                          */
-/*   constructor(broker, ws){                                               */
-/*     //Takes a websocket we want to bridge over                           */
-/*     super(broker);                                                       */
-/*     this.ws=ws;                                                          */
-/*     // Ensure this websocket is configured for array buffer binary       */
-/*     ws.binaryType="arraybuffer";                                         */
-/*                                                                          */
-/*     // NOTE: There is no backpresssure on websocket write                */
-/*     // a rate limiter block needs to be injected inbetween generator and */
-/*     // websocket                                                         */
-/*     this.buffer_out_sub= (data, cb)=>{                                   */
-/*       this.ws.send(data[0]);                                             */
-/*       cb  && cb(); // NOTE this is syncrhonous                           */
-/*     };                                                                   */
-/*                                                                          */
-/*     // Websocket outputs data in different format                        */
-/*     // convert                                                           */
-/*     this.ws.onmessage=                                                   */
-/*       (event)=>{                                                         */
-/*       //console.log("--- GOT DATA ", event.data);                        */
-/*       this.on_read_handler([new Uint8Array(event.data)], undefined);     */
-/*     };                                                                   */
-/*                                                                          */
-/*     //Link the websocket on_message                                      */
-/*   }                                                                      */
-/* }                                                                        */
-/****************************************************************************/
+
+class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge{
+
+  constructor(broker, forward, ws){
+    super(broker);
+
+    this.ws=ws;
+    this.forward=forward; //Pairs of  matcher and type in flattend array
+
+    ws.binaryType="arraybuffer";
+
+    ws.addEventListener("open", ()=>{
+
+
+      this.buffer_out_sub= (data, cb)=>{
+        ws.send(data[0]);
+        cb  && cb(); // NOTE this is syncrhonous
+      };
+
+      ws.addEventListener("message", 
+        (event)=>{
+          this.on_read_handler([new Uint8Array(event.data)], undefined); 
+        });
+
+      
+      ws.addEventListener("close",(event)=>{
+        console.log("WEBSOCKET CLOSED");
+        clearInterval(t);
+        this.close();
+
+        ws=undefined;
+      });
+
+      // Setup default forwarding
+      if(this.forward){
+        for(let i=0;i<this.forward.length; i+=2){
+          this.broker.listen(undefined, this.forward[i], this);
+        }
+      }
+
+    });
+  }
+}
 
 class WebSocketBP extends WebSocket {
   constructor(url, protocols){
@@ -522,7 +536,7 @@ class uSACFastPackBroker {
   else {
     // Global object
     window.uSACFastPackBroker         = uSACFastPackBroker;
-   // window.uSACFastPackBrokerBridgeWS = uSACFastPackBrokerBridgeWS;
+    window.uSACFastPackBrokerBridgeWS = uSACFastPackBrokerBridgeWS;
     window.uSACFastPackBrokerBridge   = uSACFastPackBrokerBridge;
     window.WebSocketPB= WebSocketBP;
   }
