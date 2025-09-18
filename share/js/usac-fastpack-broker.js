@@ -113,10 +113,10 @@ class uSACFastPackBrokerBridge {
     // ONREAD is used to take data incomming and appedn to internal buffer
     // deserialising is done and broker dispatcher is called with parsed
     // messages
-    let args={buffer:undefined, outputs:[], ns:this.rx_namespace};
 
     this.on_read_handler=(arr, cb)=>{
 
+      let args={buffer:undefined, outputs:[], ns:this.rx_namespace};
       args.buffer=arr[0];
 
       fastpack.decode_message(args);
@@ -139,6 +139,7 @@ class uSACFastPackBrokerBridge {
       }
 
       this.broker.dispatcher([this.source_id, args.outputs], cb); 
+
     };
     
   }
@@ -149,34 +150,36 @@ class uSACFastPackBrokerBridge {
   }
 }
 
-class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge {
-
-  constructor(broker, ws){
-    //Takes a websocket we want to bridge over
-    super(broker);
-    this.ws=ws;
-    // Ensure this websocket is configured for array buffer binary
-    ws.binaryType="arraybuffer";
-
-    // NOTE: There is no backpresssure on websocket write
-    // a rate limiter block needs to be injected inbetween generator and
-    // websocket
-    this.buffer_out_sub= (data, cb)=>{
-      this.ws.send(data[0]);
-      cb  && cb(); // NOTE this is syncrhonous
-    };
-
-    // Websocket outputs data in different format
-    // convert
-    this.ws.onmessage=
-      (event)=>{
-      //console.log("--- GOT DATA ", event.data);
-      this.on_read_handler([new Uint8Array(event.data)], undefined); 
-    };
-
-    //Link the websocket on_message
-  }
-}
+/****************************************************************************/
+/* class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge {      */
+/*                                                                          */
+/*   constructor(broker, ws){                                               */
+/*     //Takes a websocket we want to bridge over                           */
+/*     super(broker);                                                       */
+/*     this.ws=ws;                                                          */
+/*     // Ensure this websocket is configured for array buffer binary       */
+/*     ws.binaryType="arraybuffer";                                         */
+/*                                                                          */
+/*     // NOTE: There is no backpresssure on websocket write                */
+/*     // a rate limiter block needs to be injected inbetween generator and */
+/*     // websocket                                                         */
+/*     this.buffer_out_sub= (data, cb)=>{                                   */
+/*       this.ws.send(data[0]);                                             */
+/*       cb  && cb(); // NOTE this is syncrhonous                           */
+/*     };                                                                   */
+/*                                                                          */
+/*     // Websocket outputs data in different format                        */
+/*     // convert                                                           */
+/*     this.ws.onmessage=                                                   */
+/*       (event)=>{                                                         */
+/*       //console.log("--- GOT DATA ", event.data);                        */
+/*       this.on_read_handler([new Uint8Array(event.data)], undefined);     */
+/*     };                                                                   */
+/*                                                                          */
+/*     //Link the websocket on_message                                      */
+/*   }                                                                      */
+/* }                                                                        */
+/****************************************************************************/
 
 class WebSocketBP extends WebSocket {
   constructor(url, protocols){
@@ -519,7 +522,7 @@ class uSACFastPackBroker {
   else {
     // Global object
     window.uSACFastPackBroker         = uSACFastPackBroker;
-    window.uSACFastPackBrokerBridgeWS = uSACFastPackBrokerBridgeWS;
+   // window.uSACFastPackBrokerBridgeWS = uSACFastPackBrokerBridgeWS;
     window.uSACFastPackBrokerBridge   = uSACFastPackBrokerBridge;
     window.WebSocketPB= WebSocketBP;
   }

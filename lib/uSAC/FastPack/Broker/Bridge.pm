@@ -120,9 +120,7 @@ BUILD {
 
 #  Must have the output_buffer_sub set before calling this
 method forward_message_sub {
-  asay $STDERR, "calling forward message sub";
   die "Now output_buffer_set. Cannot make forward_message_sub" unless ref $_buffer_out_sub eq "CODE";
-  asay $STDERR, "calling forward message sub/// didn't die";
   #$_buffer_out_wrapper= sub {goto $_buffer_out_sub};
   $_forward_message_sub //= linker 
   sub {
@@ -166,8 +164,9 @@ method forward_message_sub {
 
 }
 
+
 method close {
-  asay $STDERR, "CLOSE BRIDGE CALLED";
+  #asay $STDERR, "CLOSE BRIDGE CALLED";
   # here we attempt to remove the matching entires from the broker,
   # They may never exisisted, but we attempt to remove anyway
   # The force flag means the broker will only compare the sub, not the source, or matcher

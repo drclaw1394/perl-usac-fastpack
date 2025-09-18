@@ -229,7 +229,7 @@ BUILD {
 
               elsif($k eq "ignore"){
                 # Search the hustle table entries for a match against the matcher
-                asay $STDERR, "DOING IGNORE";
+                #asay $STDERR, "DOING IGNORE";
                 $name=$v->{matcher};
                 $sub=$v->{sub};
                 $type=$v->{type};
