@@ -1,6 +1,6 @@
 @{[ init {
 
-  output location=>"test", title=>"Upload";
+  output location=>"frame", title=>"Upload";
 
   use File::ShareDir ":ALL";
   my $share=dist_dir "DGRT-Inspection-Web";
@@ -8,7 +8,7 @@
 
   inherit  "templates/dgrt.plt", $parent_root;
 
-  lander location=>"/", name=>"index.html";
+  #lander location=>"/", name=>"index.html";
 
   use Data::FastPack::App;
   Data::FastPack::App::add_to_jpack_container(sys_path_build);
@@ -21,7 +21,7 @@
 
 <html>
   <head>
-    <script src="@{[plt_res "usac-fastpack-broker-test.js"]}"></script>
+    <script src="@{[plt_res "../frame/usac-fastpack-broker-test.js"]}"></script>
   </head>
   <body>
     <script>
@@ -39,7 +39,6 @@
           .then(()=>{
             // Attempt to setup coms to parent
             window.uSACFastPackBrokerTest();
-
             return Promise.resolve();
           });
       };

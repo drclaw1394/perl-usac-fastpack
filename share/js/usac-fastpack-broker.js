@@ -67,7 +67,7 @@ class HustleTable {
 
 
 class uSACFastPackBrokerBridge {
-  constructor(broker){
+  constructor(broker, forward){
 
     broker||=new uSACFastPackBroker();
     this.broker=broker;
@@ -106,7 +106,7 @@ class uSACFastPackBrokerBridge {
 
     //console.log("Buffer is ", arg.buffer);
       
-      this.buffer_out_sub([arg.buffer], cb);
+      this.buffer_out_sub && this.buffer_out_sub([arg.buffer], cb);
     };
 
     
@@ -142,6 +142,14 @@ class uSACFastPackBrokerBridge {
       this.broker.dispatcher([this.source_id, args.outputs], cb); 
 
     };
+
+    // Setup default forwarding
+    this.forward=forward; //Pairs of  matcher and type in flattend array
+    if(this.forward){
+      for(let i=0;i<this.forward.length; i+=2){
+        this.broker.listen(undefined, this.forward[i], this, this.forward[i+1]);
+      }
+    }
     
   }
   close(){
@@ -155,10 +163,9 @@ class uSACFastPackBrokerBridge {
 class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge{
 
   constructor(broker, forward, ws){
-    super(broker);
+    super(broker, forward);
 
     this.ws=ws;
-    this.forward=forward; //Pairs of  matcher and type in flattend array
 
     ws.binaryType="arraybuffer";
 
@@ -184,14 +191,76 @@ class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge{
         ws=undefined;
       });
 
-      // Setup default forwarding
-      if(this.forward){
-        for(let i=0;i<this.forward.length; i+=2){
-          this.broker.listen(undefined, this.forward[i], this);
-        }
-      }
 
     });
+  }
+}
+
+class uSACFastPackBrokerBridgeFrame extends uSACFastPackBrokerBridge {
+  constructor(broker, forward, peer){
+    super(broker, forward);
+    this.peer=peer;
+
+    //Set up an event listener to peer window
+    peer.addEventListener('message', (event)=>{
+      this.on_read_handler([new Uint8Array(event.data)], undefined); 
+    });
+
+    this.buffer_out_sub= (data, cb)=>{
+      peer.postMessage(data[0],"*");
+      cb  && cb(); // NOTE this is syncrhonous
+    };
+
+  }
+}
+
+
+  
+class uSACFastPackBrokerBridgeStream extends uSACFastPackBrokerBridge {
+  constructor(broker, forward){
+    super(broker, forward);
+
+
+
+    // Setup to send buffers of data to write stream
+    this.buffer_out_sub= (data, cb)=>{
+      if(this.controller){
+        // Only attempt to send if someone has got the read stream
+        this.controller.enguque(data[0]);
+      }
+      cb  && cb(); // NOTE this is syncrhonous
+    };
+  }
+
+  // Returns the write stream which data can be written to INTO the broker
+  get_write_stream(){
+    let scope=this;
+    if(this.write_stream == undefined){
+      this.write_stream=new WritableStream({
+        write(chunk){
+          scope.on_read_handler([chunk],undefined);
+          return Promise.resolve();    
+        },
+        close(){
+        }
+      });
+    }
+    return this.write_stream;
+  }
+
+  // Returns the read stream which is FROM the broker
+  // NOTE: This queues data !
+  get_read_stream(){
+    let scope=this;
+    if(this.read_stream == undefined){
+      this.read_stream=new ReadableStream({
+        start(controller){
+          //Save controller so we can push data do it
+          scope.controller=controller; 
+        }
+      });
+    }
+    return this.read_stream;
   }
 }
 
@@ -536,11 +605,15 @@ class uSACFastPackBroker {
   else {
     // Global object
     window.uSACFastPackBroker         = uSACFastPackBroker;
+    window.uSACFastPackBrokerBridgeStream   = uSACFastPackBrokerBridgeStream;
+    window.uSACFastPackBrokerBridgeFrame   = uSACFastPackBrokerBridgeFrame;
     window.uSACFastPackBrokerBridgeWS = uSACFastPackBrokerBridgeWS;
     window.uSACFastPackBrokerBridge   = uSACFastPackBrokerBridge;
     window.WebSocketPB= WebSocketBP;
+    if(window.broker == undefined){
+      window.broker=new uSACFastPackBroker();
+    }
   }
-
 
 
 })();

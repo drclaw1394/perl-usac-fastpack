@@ -1,5 +1,31 @@
 (function(){
 
+
+  function bridge_to_parent(){
+
+    // Attempt to link to parent window or if top level window, attempt to
+    // connect back to the host we loaded from
+    //
+    let forward=[".*"];
+    try {
+      if(window.self !== window.top){
+        //Inside an iframe;
+        window.parent_bridge=new uSACFastPackBrokerBridgeFrame(broker, forward, window.top);
+      }
+      else {
+        // We are the top level 
+        let ws=new WebSocket("/ws");
+        window.parent_bridge=new uSACFastPackBrokerBridgeWS(broker, forward, ws);
+      }
+      
+    }
+    catch(e){
+      // Cross origin restrictions, we are likely a iframe
+      //window.parent_bridge=new uSACFastPackBrokerBridgeFrame(broker, forward, window.top);
+    }
+  }
+
+
   function run(){
     //Create a new broker if needed
     window.broker||=new uSACFastPackBroker();
@@ -28,14 +54,14 @@
     broker.broadcast(undefined, "test", "data goes here");
 
 
+    bridge_to_parent();
+    
 
-    let ws=new WebSocket("/ws");
-    let bridge=new uSACFastPackBrokerBridgeWS(broker, [], ws);
 
 
     let encoder=new TextEncoder();
 
-    broker.listen(undefined, "test", bridge);
+    //broker.listen(undefined, "test", parent_bridge);
 
     let t=setInterval(()=>{
       let data= encoder.encode("test data");
@@ -47,6 +73,7 @@
       console.log(data);
     });
   }
+
   if (typeof module === "object" && module && typeof module.exports === "object") {
     // Node.js
     module.exports =run;

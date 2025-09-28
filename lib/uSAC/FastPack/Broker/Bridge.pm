@@ -51,6 +51,8 @@ field $_on_read_handler :mutator;
 
 field $_pass_through :param = [];
 
+# List of matchers/type pairs to forward  by default
+field $_forward      :param = undef;
 
 BUILD {
   #say "BUILD IN BASE";
@@ -115,6 +117,14 @@ BUILD {
   DEBUG and Log::OK::TRACE and asay $STDERR, "$$ $_source_id: Bridge id about to listen is registering meta";
   #$_broker->listen($_source_id, '0', $_forward_message_sub, "exact");
 
+  if($_forward){
+    for my ($m, $t)($_forward->@*){
+      $_broker->listen(undef, $m, $self, $t);
+    }
+  }
+  else {
+    # Forward everything?
+  }
 
 }
 
