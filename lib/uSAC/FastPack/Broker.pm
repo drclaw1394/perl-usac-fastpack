@@ -140,6 +140,9 @@ BUILD {
   
     #  Here check if sub is actually a bridge
     if($sub isa uSAC::FastPack::Broker::Bridge){
+
+      $self->add_bridge($sub);
+
       print STDERR " sub is a bridge";
         $source_id=$sub->source_id;
         #$self->add_bridge($sub);

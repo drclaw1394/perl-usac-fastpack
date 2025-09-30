@@ -365,7 +365,7 @@ class uSACFastPackBroker {
       this.uuid=uuid4();
       this.default_source_id=uuid4();
       this.ht=new HustleTable();
-
+      this.bridges={};
 
       this.dispatcher=(inputs)=>{
         let source=inputs[0];
@@ -406,9 +406,10 @@ class uSACFastPackBroker {
       };
 
 
-      this.listener_sub=(source_id,name, sub,type)=>{
+      this.listener_sub=(source_id, name, sub,type)=>{
         
         if(sub instanceof uSACFastPackBrokerBridge){
+            this.add_bridge(sub);
           //support direct addition of bridge
             source_id=sub.source_id;
             sub=sub.forward_message_sub;
@@ -594,7 +595,186 @@ class uSACFastPackBroker {
     }
 
 
+    add_bridge(bridge){
+      this.bridges[bridge.source_id]=bridge;
+    }
+
+    remove_bridge(bridge){
+      delete this.bridges[bridge.source_id];
+    }
+
+
+    static bridge_to_parent(){
+    // Attempt to link to parent window or if top level window, attempt to
+    // connect back to the host we loaded from
+    //
+    let forward=[".*"];
+    try {
+      if(window.self !== window.top){
+        //Inside an iframe;
+        window.parent_bridge=new uSACFastPackBrokerBridgeFrame(broker, forward, window.top);
+      }
+      else {
+        // We are the top level 
+        let ws=new WebSocket("/ws");
+        window.parent_bridge=new uSACFastPackBrokerBridgeWS(broker, forward, ws);
+      }
+      
+    }
+    catch(e){
+      // Cross origin restrictions, we are likely a iframe
+      //window.parent_bridge=new uSACFastPackBrokerBridgeFrame(broker, forward, window.top);
+    }
+    return window.parent_bridge;
 }
+
+
+}
+
+
+// 'Channel' implementation
+// Create a unique grouping or  'namespace' of stream of data. 
+// Gives control with ' out of band' control sub topic
+// THe mode dictates the names of the sending and recieving sub topics used
+//
+class uSACFastPackChannel{
+  constructor(uuid, broker, mode){
+    this.uuid=uuid||uuid4();
+    this.mode=mode;
+    this.broker=broker;
+    
+    this.on_data;
+    this.on_control;
+    this.data_in_name;
+    this.control_in_name;
+  }
+
+  _setup(sender, on_connect){
+
+    if(mode == "master"){
+      this.data_in_name=this.uuid+"/MISO";   
+      this.data_out_name=this.uuid+"/MOSI";   
+      this.control_in_name=this.data_in_name+"/CTL";   
+      this.control_out_name=this.data_out_name+"/CTL";   
+
+      this.broker.listen(undefined, this.control_in_name, (data)=>{
+        this.on_control && this.on_control(data[1][0].payload);
+      },
+        "exact"
+      );
+
+      let bridge=this.broker.bridges[sender];
+      if(bridge){
+        // Channel initiated from remote peer/bridge
+        // So we need to forward messages. This will add it to the broker if it
+        // doesn't already exist
+        this.broker.listen(undefined, this.uuid, bridge, "begin");
+      }
+
+      //Control channels to listen for
+      this.broker.listen(undefined, this.data_in_name, (data)=>{
+        this.on_data && this.on_data(data[1][0].payload);
+      },
+        "exact"
+      );
+
+
+      on_connect && on_connect(this);
+
+    }
+    else{
+      this.data_in_name=this.uuid+"/MOSI";   
+      this.data_out_name=this.uuid+"/MISO";   
+      this.control_in_name=this.data_in_name+"/CTL";   
+      this.control_out_name=this.data_out_name+"/CTL";   
+
+
+      let first=true;
+      this.broker.listen(undefined,this.control_in_name, (data)=>{
+
+        if(first){
+          let sender=data[0];
+          let bridge=this.broker.bridges[sender];
+          if(bridge){
+            this.broker.listen(undefined, this.uuid, bridge, "begin");
+          }
+          on_connect and on_connect(this);
+          first=false;
+        }
+      },
+        "exact"
+      );
+
+      this.broker.listen(undefined,this.data_in_name, (data)=>{
+        this.on_data  && this.on_data(data[1][0].payload);
+      },
+        "exact");
+    }
+
+
+  }
+
+  // Attempt to connect to an end point via the broker
+  // IF the channel is to a remote host, all the topics begining with the
+  // channels uuid need to be manually forwarded
+  //
+  connect(connection_endpoint, callback){
+
+    this.uuid||uuid4();
+    this.mode="slave";
+
+    // Create the data we want to send
+    let obj={
+      uuid:                 this.uuid,
+      rate_limit:           0,
+      virtual_buffer_size:  16
+    };
+
+    let json=JSON.stringify(obj);
+    let encoder=new TextEncoder();
+    let encoded=encoder.encode(json);
+
+    // Send an message to the end_point and hope that we get data...
+    this._setup(undefined, callback);
+
+    this.broker.broadcast(undefined, connection_endpoint, encoded);
+  }
+
+
+  // Adds a 'listener' to establish a channel
+  // This is a static/class method used on the 'master
+  // NOTE: thei connection_endpoint also needs to be manually forward over bridges if desired
+  // 
+  static accept(connection_endpoint, broker, callback){
+
+      broker.listen(undefined, connection_endpoint, (data)=>{
+
+      let sender=data[0];
+      let codec=new TextEncoder();
+      let value= data[1][0].payload;
+      let decoded=codec.decode(value);
+
+      let object=JSON.parse(decoded);
+
+      let channel=new uSACFastPackChannel(object.uuid, broker, "master");
+      
+      channel._setup(sender, callback);
+      channel.send_control("");
+    },
+    "exact");
+  }
+
+  method send_data(data){
+    this.broker.broadcast(undefined, this.data_out_name, data);
+  }
+
+  method send_control(data){
+    this.broker.broadcast(undefined, this.control_out_name, data);
+  }
+
+
+}
+
 
 
 
@@ -610,6 +790,7 @@ class uSACFastPackBroker {
     window.uSACFastPackBrokerBridgeWS = uSACFastPackBrokerBridgeWS;
     window.uSACFastPackBrokerBridge   = uSACFastPackBrokerBridge;
     window.WebSocketPB= WebSocketBP;
+    window.uSACFastPackChannel= uSACFastPackChannel;
     if(window.broker == undefined){
       window.broker=new uSACFastPackBroker();
     }

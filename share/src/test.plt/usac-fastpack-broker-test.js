@@ -54,7 +54,8 @@
     broker.broadcast(undefined, "test", "data goes here");
 
 
-    bridge_to_parent();
+    //bridge_to_parent();
+    uSACFastPackBroker.bridge_to_parent();
     
 
 
