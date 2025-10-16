@@ -10,11 +10,11 @@
 
   lander location=>"/", name=>"index.html";
 
-  use Data::FastPack::App;
-  Data::FastPack::App::add_to_jpack_container(sys_path_build);
+  #use Data::FastPack::App;
+  #Data::FastPack::App::add_to_jpack_container(sys_path_build);
 
-  use uSAC::FastPack::Broker::App;
-  uSAC::FastPack::Broker::App::add_to_jpack_container(sys_path_build);
+  #use uSAC::FastPack::Broker::App;
+  #uSAC::FastPack::Broker::App::add_to_jpack_container(sys_path_build);
 
 }
 ]}
@@ -24,6 +24,7 @@
     <script src="@{[plt_res "usac-fastpack-broker-test.js"]}"></script>
   </head>
   <body>
+    <h2> usac broker test. check console</h2>
     <script>
       window.onload=(e)=>{
         console.log("ON LOAD");

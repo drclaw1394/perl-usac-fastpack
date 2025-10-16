@@ -315,6 +315,18 @@ BUILD {
     my $sub=  shift;
     my $type= shift//$_default_match_mode;
     my $force=shift;
+
+    #  Here check if sub is actually a bridge
+    if($sub isa uSAC::FastPack::Broker::Bridge){
+
+      $self->remove_bridge($sub);
+
+      print STDERR " sub is a bridge";
+        $source_id=$sub->source_id;
+        #$self->add_bridge($sub);
+        $sub=$sub->forward_message_sub;
+        $force.="matcher source";
+    }
   
     #die 'Cannot ignore for an unamed message' unless $name and $force=
     my $object={ignore=>{source=>$source_id, matcher=>$name, type=>$type, sub=>$sub, force=>$force}};

@@ -1,6 +1,6 @@
 package uSAC::FastPack::Channel;
 
-use uSAC::IO;
+use uSAC::IO qw(asay);
 use Data::Dumper;
 use feature ":all";
 use Object::Pad;
@@ -53,10 +53,14 @@ method _setup {
 
     # If called with a sender, check if a bridge and setup fowarding for
     # anything on channel uuid
-    my $bridge=$_broker->bridges->{$sender}; 
+    my $bridge=$_broker->bridges->{$sender//""}; 
     if($bridge){
       $_broker->listen(undef, $_uuid, $bridge, "begin");
     }
+
+    # SEND THE FINAL HANDSHAKE
+    $self->send_control("");
+
     # Data listening
     #
     $_broker->listen(undef, $_data_in_name, sub {
@@ -83,6 +87,7 @@ method _setup {
         # and acknowlege the connection
         #
         if($first){
+          DEBUG and asay $STDERR, "CONTROL LISTENER for first slave $_control_in_name".Dumper @_;
           my $sender=$_[0][0];
           my $bridge=$_broker->bridges->{$sender}; 
           if($bridge){
@@ -98,6 +103,7 @@ method _setup {
       },
       "exact"
     );
+
     # Data listening
     #
     $_broker->listen(undef, $_data_in_name, sub {
@@ -137,6 +143,7 @@ method connect {
 # Class method, setup a listener for the connection enpoint
 # Does a callback with a new channel set up as master
 #
+
 sub accept{
   shift;
   my $connection_endpoint=shift;
@@ -154,7 +161,7 @@ sub accept{
 
       DEBUG and asay $STDERR, "ACCEPT END POINT CALLED by new sender: $sender";
       $channel->_setup($sender, $callback);
-      $channel->send_control("");
+      #$channel->send_control("");
 
       #$callback and $callback->($channel);
     },
@@ -162,13 +169,17 @@ sub accept{
   );
 }
 
+
 method send_data {
   DEBUG and asay $STDERR, "SENDING TO peer on $_data_out_name";
   $_broker->broadcast(undef, $_data_out_name, $_[0]);
 }
 
+
 method send_control {
+  DEBUG and asay $STDERR, "SENDING TO peer on $_control_out_name";
   $_broker->broadcast(undef, $_control_out_name, $_[0]);
 }
+
 
 1;

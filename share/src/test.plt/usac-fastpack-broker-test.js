@@ -58,8 +58,9 @@
     uSACFastPackBroker.bridge_to_parent();
     
 
+    setTimeout(()=>{
 
-
+    /*
     let encoder=new TextEncoder();
 
     //broker.listen(undefined, "test", parent_bridge);
@@ -73,8 +74,55 @@
     broker.listen(undefined, "return", (data)=>{
       console.log(data);
     });
+    */
+
+    broker.listen(undefined, /.*/, (data)=>{
+      console.log("CATCH ALL", data);
+    });
+    //Test channels
+    let slave=new uSACFastPackChannel(undefined, window.broker);
+    console.log("--Slave channel ok?", slave!==undefined);
+
+    let master;
+    uSACFastPackChannel.accept("end_point", window.broker, (ch)=>{
+      master=ch;
+      console.log("--Master channel accept ok?", master!==undefined);
+      master.on_data=(data)=>{
+        console.log("MASTER GOT DATA", data);
+      };
+      master.on_control=(data)=>{
+        console.log("MASTER GOT CONTROL", data);
+      };
+
+      master.send_control("MOSI");
+      master.send_data("MOSI");
+
+    });
+
+    slave.on_data=(data)=>{
+      console.log("SLAVE GOT DATA", data);
+    };
+
+    slave.on_control=(data)=>{
+      console.log("SLAVE GOT CONTROL", data);
+    };
+
+    slave.connect("remote_end_point", (ch)=>{
+      console.log("ON connect slave");
+      slave.send_data("MISO");
+      slave.send_control("MISO");
+    });
+
+    }, 2000);
   }
 
+
+
+
+
+
+
+  
   if (typeof module === "object" && module && typeof module.exports === "object") {
     // Node.js
     module.exports =run;

@@ -19,6 +19,7 @@ my $share_dir=dist_dir "uSAC-FastPack";
 
 # Return the paths of sourse files
 sub js_paths {
+  say STDERR "GETTING JS PATHS FOR ".__PACKAGE__;
   grep !/test/, <$share_dir/js/*>;
 }
 
@@ -34,10 +35,11 @@ sub add_to_jpack_container {
 
   my @outputs;
   for(js_paths){
+    say STDERR __PACKAGE__ . " adding js: ", $_;
     my $out_path=$jpack->next_file_name($_);
     next unless $out_path;
 
-    #say STDERR "OUTPUT PATH IS $out_path";
+    say STDERR __PACKAGE__." OUTPUT PATH IS (broker app) $out_path";
 
     $jpack->encode_file($_,$out_path);
     push @outputs, $out_path;    #

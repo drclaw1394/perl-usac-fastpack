@@ -180,9 +180,13 @@ method close {
   # here we attempt to remove the matching entires from the broker,
   # They may never exisisted, but we attempt to remove anyway
   # The force flag means the broker will only compare the sub, not the source, or matcher
-    my $dispatch=$_broker->get_dispatcher;
-    my $obj={ignore=>{source=> $_source_id, sub=>$_forward_message_sub, force=>"matcher source"}};
-    $dispatch->([$_source_id, [[time, 0, $obj]]]);
+  #my $dispatch=$_broker->get_dispatcher;
+
+    #my $obj={ignore=>{source=> $_source_id, sub=>$_forward_message_sub, force=>"matcher source"}};
+    #$dispatch->([$_source_id, [[time, 0, $obj]]]);
+
+    # Ingore everything this bridge was listening for and remove it from broker
+    $_broker->ignore(undef, undef, $self);
 }
 
 
