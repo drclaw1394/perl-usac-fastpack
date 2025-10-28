@@ -1,6 +1,6 @@
 package uSAC::FastPack::Broker;
 
-our $VERSION = 'v0.2.0';
+our $VERSION = 'v0.2.1';
 use v5.36;
 use Time::HiRes qw<time>;
 
@@ -248,7 +248,9 @@ BUILD {
                 my $found;
                 my $pos=0;
                 for my $e(reverse 0..$_ht->@*-2){
+
                   use re "regexp_pattern";
+
                   my ($pattern_1, undef)=regexp_pattern($_ht->[$e]->[Hustle::Table::matcher_]);
                   $pattern_1//=$_ht->[$e]->[Hustle::Table::matcher_];
 

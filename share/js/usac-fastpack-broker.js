@@ -37,8 +37,10 @@ class HustleTable {
               results.push(entry, undefined);
             }
           }
-          else if(entry.type == undefined){
-            let strings=entry.matcher.exec(input);
+          // NOTE: Use the type as a compiled regex
+          //else if(entry.type == undefined){
+          else {
+            let strings=entry.type.exec(input);
             if( strings != null){
               strings.shift();  // Remove matching string to leave the captures
               (this.cache[input]||=[]).push(entry, strings);
@@ -442,26 +444,28 @@ class uSACFastPackBroker {
               let type= value.type;
 
 
-              let org_name=name;
-              if(!type){
-                name=RegExp(name);
-              }
 
               let found=undefined;
               for(let k=0; k<this.ht.table.length; k++){
                 let e=this.ht.table[k];
 
-                let pattern_1=e.matcher.source;
-                if(pattern_1 == undefined){
-                  pattern_1=e.matcher;
-                }
-                let pattern_2=name.source;
-                if(pattern_2 == undefined){
-                  pattern_2 =name;
-                }
+                let pattern_1=e.matcher;
+                //.source;
+                //if(pattern_1 == undefined){
+                  //pattern_1=e.matcher;
+                //}
+                let pattern_2=name;
+                //.source;
+                //if(pattern_2 == undefined){
+                  //pattern_2 =name;
+                //}
+              let org_tyoe=type;
+              if(!type){
+                type=RegExp(name);
+              }
 
                 //if((e.matcher.toString() == name.toString()) && (e.type == type)){
-                if((pattern_1 == pattern_2) && (e.type == type)){
+                if((pattern_1 == pattern_2) && (e.type.toString() == type.toString())){
                   e.value.push(sub, source_id);
                   found=true;
                   continue;
@@ -488,26 +492,38 @@ class uSACFastPackBroker {
               let force_source = value.force == "source";
               let force_matcher = value.force == "matcher";
 
-              let org_name=name;
-              if(!type){
-                name=RegExp(name);
-              }
 
               let found=false;
               for(let k=this.ht.table.length-1; k>=0; k--){
                 let e=this.ht.table[k];
 
-                let pattern_1=e.matcher.source;
-                if(pattern_1 == undefined){
-                  pattern_1=e.matcher;
-                }
-                let pattern_2=name.source;
-                if(pattern_2 == undefined){
-                  pattern_2 =name;
-                }
+                let pattern_1=e.matcher;
+                //.source;
+                //if(pattern_1 == undefined){
+                  //pattern_1=e.matcher;
+                //}
+                let pattern_2=name;
+                //.source;
+                //if(pattern_2 == undefined){
+                  //pattern_2 =name;
+                //}
+                //console.log("pattern 1", pattern_1);
+                //console.log("pattern 2", pattern_2);
 
+              let org_type=type;
+              if(!type){
+                type=RegExp(name);
+              }
+                /********************************************/
+                /* console.log(e.value);                    */
+                /* console.log("source", source_id);        */
+                /* console.log("PATTERN1", pattern_1);      */
+                /* console.log("PATTERN2", pattern_2);      */
+                /* console.log("TYPE1", e.type.toString()); */
+                /* console.log("TYPE2", type);              */
+                /********************************************/
                 //if((e.matcher.toString() == name.toString()) && (e.type == type)){
-                if(force_matcher || ((pattern_1 == pattern_2) && (e.type == type))){
+                if(force_matcher || ((pattern_1 == pattern_2) && (e.type.toString() == type.toString()))){
 
                 //if((e.matcher.toString() == name.toString()) && (e.type == type)){
                   
@@ -515,12 +531,14 @@ class uSACFastPackBroker {
                     if((force_sub || (e.value[l] == sub )) && 
                       (force_source || (e.value[l+1] == source_id))){
                       e.value.splice(l,2);
+                      //console.log(" IGNORE SUCCUESS");
                       found=1;
                       continue;
                     }
                   }
 
                   if(e.value.length==0){
+                      //console.log(" IGNORE SUCCUESS REMOVE ARRAY");
                     this.ht.table.splice(k,1);
                   }
 
@@ -540,13 +558,14 @@ class uSACFastPackBroker {
 
 
 
-      this.ignorer_sub=(source_id, name, sub, type)=>{
+      this.ignorer_sub=(source_id, name, sub, type, force)=>{
         let object={
           ignore: {
             source:     source_id,
             matcher:    name,
             type:       type,
-            sub:        sub
+            sub:        sub,
+            force:      force
           }
         };
 
@@ -566,12 +585,12 @@ class uSACFastPackBroker {
       this.broadcaster_sub(client, [name, value]);
     }
 
-    listen(client, name, _sub, type){
-      this.listener_sub(client, name, _sub, type);
+    listen(client, name, sub, type){
+      this.listener_sub(client, name, sub, type);
     }
 
-    ignore(client, name, sub, _sub, type, force){
-      this.ignorer_sub(client, name, _sub, type, force);
+    ignore(client, name, sub, type, force){
+      this.ignorer_sub(client, name, sub, type, force);
     }
 
 
