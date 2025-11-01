@@ -16,7 +16,7 @@ $node->listen("adf", "test", sub {
 },
 undef);
 
-$node->listen( "test222", sub {
+$node->listen(undef, "test222", sub {
   say STDERR "GOT MESSAGE:", Dumper @_;
 },
 undef);

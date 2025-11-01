@@ -12,7 +12,7 @@ WriteMakefile(
   PREREQ_PM         => {
     'Data::FastPack'=> v0.3.0,
     'Sub::Middler'  => v0.4.0,
-    'Hustle::Table' => v0.7.3,
+    'Hustle::Table' => v0.8.0,
     'UUID'          => 0,
   }, 
   ABSTRACT_FROM     => 'lib/uSAC/FastPack/Broker.pod', # retrieve abstract from module

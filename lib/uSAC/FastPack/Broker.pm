@@ -185,24 +185,17 @@ BUILD {
                 $sub=delete $v->{sub};
                 $type=$v->{type};
 
-                my $org_name=$name;
 
                 # Preconvert  to ensure grouping of dispatch entries
-                $name=qr{$name} if !$type;
+                #$name=qr{$name} if !$type;
                 # Search the hustle table entries for a match against the matcher
                 my $found;
                 for my $e($_ht->@*){
                   no warnings "uninitialized";
-                  use re "regexp_pattern";
 
-                  my ($pattern_1, undef)=regexp_pattern($e->[Hustle::Table::matcher_]);
-                  $pattern_1//=$e->[Hustle::Table::matcher_];
+                  $type=qr{$name} if !$type;
 
-                  my ($pattern_2, undef)=regexp_pattern($name);
-                  $pattern_2//=$name;
-
-                  if($pattern_1 eq $pattern_2 and $e->[Hustle::Table::type_] eq $type){
-                  #if($e->[Hustle::Table::matcher_] eq $name and $e->[Hustle::Table::type_] eq $type){
+                  if($e->[Hustle::Table::matcher_] eq $name and "$e->[Hustle::Table::type_]" eq "$type"){
                     push $e->[Hustle::Table::value_]->@*, $sub, $source_id;
                     $found=1;
 
@@ -240,7 +233,7 @@ BUILD {
                 my $force_source=$v->{force} =~ /source/;
                 my $force_matcher=$v->{force} =~ /matcher/;
 
-                $name=qr{$name} if !$type;
+                #$name=qr{$name} if !$type;
                 #Log::OK::TRACE and asay $STDERR,  "IGNOREING TOPIC? $source_id $name  $sub $type";
                 #asay $STDERR,  "IGNOREING TOPIC? $source_id $name  $sub $type";
 
@@ -249,26 +242,19 @@ BUILD {
                 my $pos=0;
                 for my $e(reverse 0..$_ht->@*-2){
 
-                  use re "regexp_pattern";
 
-                  my ($pattern_1, undef)=regexp_pattern($_ht->[$e]->[Hustle::Table::matcher_]);
-                  $pattern_1//=$_ht->[$e]->[Hustle::Table::matcher_];
-
-                  my ($pattern_2, undef)=regexp_pattern($name);
-                  $pattern_2//=$name;
-
+                 $type=qr{$name} if !$type;
                   # Force penetrates the loop, the patterns and types are ignored. Whe only check subs
-                  if($force_matcher or ($pattern_1 eq $pattern_2 and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
-                    #if($force or ($_ht->[$e][Hustle::Table::matcher_] eq $name and $_ht->[$e]->[Hustle::Table::type_] eq $type)){
+                  if($force_matcher or ($_ht->[$e][Hustle::Table::matcher_] eq $name and "$_ht->[$e]->[Hustle::Table::type_]" eq "$type")){
                     # Remove sub from list
                     # Force disables the client id check and tests the sub only
                     for my ($j, $i) (reverse 0..$_ht->[$e]->[Hustle::Table::value_]->@*-1){
-                      Log::OK::TRACE and asay $STDERR,  "$$ -- j is $j  and i is $i";
-                      Log::OK::TRACE and asay $STDERR,  "$$ -----serching $pattern_1 with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                      #Log::OK::TRACE and asay $STDERR,  "$$ -- j is $j  and i is $i";
+                      #Log::OK::TRACE and asay $STDERR,  "$$ -----serching $pattern_1 with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                       
                       if(($force_sub or ($_ht->[$e]->[Hustle::Table::value_][$i] == $sub)) and
                         ($force_source or ($_ht->[$e]->[Hustle::Table::value_][$j] eq $source_id))){
-                        Log::OK::TRACE and asay $STDERR,  "$$ -----unregister $pattern_1 with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
+                        #Log::OK::TRACE and asay $STDERR,  "$$ -----unregister $pattern_1 with $sub == $_ht->[$e]->[Hustle::Table::value_][$i] and $source_id $_ht->[$e]->[Hustle::Table::value_][$j]?";
                         splice $_ht->[$e]->[Hustle::Table::value_]->@*, $i, 2;
                         $found=1;
 
@@ -290,14 +276,6 @@ BUILD {
                 $_cache={}; 
                 $_ht_dispatcher=$_ht->prepare_dispatcher(cache=>$_cache);
 
-                #####################################################################################
-                # if($force){                                                                       #
-                #   DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ Looking for bidge  $source_id"; #
-                #   my $b=delete $_bridges->{$source_id};                                           #
-                #   DEBUG and Log::OK::TRACE and asay $STDERR,  "$$ found  bidge  $b";              #
-                #   $b->close if $b;                                                                #
-                # }                                                                                 #
-                #####################################################################################
               }
 
             }

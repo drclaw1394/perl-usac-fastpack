@@ -449,23 +449,13 @@ class uSACFastPackBroker {
               for(let k=0; k<this.ht.table.length; k++){
                 let e=this.ht.table[k];
 
-                let pattern_1=e.matcher;
-                //.source;
-                //if(pattern_1 == undefined){
-                  //pattern_1=e.matcher;
-                //}
-                let pattern_2=name;
-                //.source;
-                //if(pattern_2 == undefined){
-                  //pattern_2 =name;
-                //}
               let org_tyoe=type;
               if(!type){
                 type=RegExp(name);
               }
 
                 //if((e.matcher.toString() == name.toString()) && (e.type == type)){
-                if((pattern_1 == pattern_2) && (e.type.toString() == type.toString())){
+                if((e.matcher == name) && (e.type.toString() == type.toString())){
                   e.value.push(sub, source_id);
                   found=true;
                   continue;
@@ -497,33 +487,13 @@ class uSACFastPackBroker {
               for(let k=this.ht.table.length-1; k>=0; k--){
                 let e=this.ht.table[k];
 
-                let pattern_1=e.matcher;
-                //.source;
-                //if(pattern_1 == undefined){
-                  //pattern_1=e.matcher;
-                //}
-                let pattern_2=name;
-                //.source;
-                //if(pattern_2 == undefined){
-                  //pattern_2 =name;
-                //}
-                //console.log("pattern 1", pattern_1);
-                //console.log("pattern 2", pattern_2);
 
               let org_type=type;
               if(!type){
                 type=RegExp(name);
               }
-                /********************************************/
-                /* console.log(e.value);                    */
-                /* console.log("source", source_id);        */
-                /* console.log("PATTERN1", pattern_1);      */
-                /* console.log("PATTERN2", pattern_2);      */
-                /* console.log("TYPE1", e.type.toString()); */
-                /* console.log("TYPE2", type);              */
-                /********************************************/
                 //if((e.matcher.toString() == name.toString()) && (e.type == type)){
-                if(force_matcher || ((pattern_1 == pattern_2) && (e.type.toString() == type.toString()))){
+                if(force_matcher || ((e.matcher == name) && (e.type.toString() == type.toString()))){
 
                 //if((e.matcher.toString() == name.toString()) && (e.type == type)){
                   
