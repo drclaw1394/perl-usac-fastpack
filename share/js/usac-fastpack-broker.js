@@ -161,12 +161,14 @@ class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge{
   constructor(broker, forward, ws){
     super(broker, forward);
 
+    console.log("----------have ws bridge-----");
     this.ws=ws;
 
     ws.binaryType="arraybuffer";
 
     ws.addEventListener("open", ()=>{
 
+      console.log("-==-=-=-=-=-= websocket open");
 
       this.buffer_out_sub= (data, cb)=>{
         ws.send(data[0]);
@@ -372,6 +374,7 @@ class uSACFastPackBroker {
           // Do look up of message id in table
           let entries=this.ht.dispatcher(msg.id); //this.lookup
 
+          console.log("Entries for  ", msg.id, entries);
           for(let j=0; j< entries.length; j+=2){
             let e=entries[j];
             let c=entries[j+1];

@@ -33,8 +33,8 @@ $parent->add_route(
   "ws",
   uhm_bridge_ws(), #broker=>$broker),
   sub {
-    my $broker = $_[PAYLOAD][0]; 
-    my $bridge = $_[PAYLOAD][1]; 
+    my $bridge= $_[PAYLOAD][0]; 
+    my $broker= $_[PAYLOAD][1]; 
     $broker->broadcast(undef, "bridge_ws", $bridge);
 
     asay $STDERR, "CREATED BRIDGE TO CLIENT VIA WEBSOCKET broker: $broker  with bridge $bridge";
