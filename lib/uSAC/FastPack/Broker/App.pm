@@ -1,13 +1,15 @@
 # FastPack application (web client)
 package uSAC::FastPack::Broker::App;
-use strict;
-use warnings;
+
+use v5.36;
 
 use feature ":all";
 our $VERSION="v0.1.0";
 
 
 use Data::JPack;
+use Data::JPack::App;
+use Template::Plexsite;
 
 use File::ShareDir ":ALL";
 
@@ -45,6 +47,35 @@ sub add_to_jpack_container {
     push @outputs, $out_path;    #
   }
   @outputs;
+}
+
+sub add_to_container {
+  my (undef, $t)=@_;
+
+  return unless $t isa Template::Plexsite;
+
+  Data::JPack::App->localize_table ($t, sub {
+
+    my @paths=(js_paths);
+    for(@paths){
+      $t->add_resource($_, 
+        static=>{
+          config=>{
+            output=>{
+              filter=>{
+                name=>"jpack",
+              }
+            }
+          }
+        }
+      );
+    }
+  }
+);
+}
+
+sub template_path {
+  (undef, $share_dir);
 }
 
 1;
