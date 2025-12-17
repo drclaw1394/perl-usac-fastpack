@@ -17,7 +17,6 @@ field $_wfd :param;
 field $_on_error :mutator;
 
 BUILD {
-  #say "BUILD IN STREAM";
 
   my $source_id=$self->source_id; # From parent class. local (faster) copy
 
@@ -38,7 +37,6 @@ BUILD {
     $self->close;
     &$_on_error if $_on_error;
   };
-
   $_reader->start;
 }
 

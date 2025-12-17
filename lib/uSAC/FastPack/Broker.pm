@@ -143,7 +143,6 @@ BUILD {
 
       $self->add_bridge($sub);
 
-      print STDERR " sub is a bridge";
         $source_id=$sub->source_id;
         #$self->add_bridge($sub);
         $sub=$sub->forward_message_sub;
@@ -301,7 +300,6 @@ BUILD {
 
       $self->remove_bridge($sub);
 
-      print STDERR " sub is a bridge";
         $source_id=$sub->source_id;
         #$self->add_bridge($sub);
         $sub=$sub->forward_message_sub;
