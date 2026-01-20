@@ -64,41 +64,45 @@
     setTimeout(()=>{
 
     let encoder=new TextEncoder();
+    /***********************************************************/
+    /*                                                         */
+    /* broker.listen(undefined, "test", window.parent_bridge); */
+    /*                                                         */
+    /* let t=setInterval(()=>{                                 */
+    /*   let data= encoder.encode("test data");                */
+    /*   console.log("Sending data ", data);                   */
+    /*   broker.broadcast(undefined, "test", data);            */
+    /* }, 1000);                                               */
+    /*                                                         */
+    /* broker.listen(undefined, "return", (data)=>{            */
+    /*   console.log("RETURN", data);                          */
+    /* });                                                     */
+    /*                                                         */
+    /* broker.listen(undefined, '.*', (data)=>{                */
+    /*   console.log("CATCH ALL", data);                       */
+    /* });                                                     */
+    /***********************************************************/
 
-    broker.listen(undefined, "test", window.parent_bridge);
-
-    let t=setInterval(()=>{
-      let data= encoder.encode("test data");
-      console.log("Sending data ", data);
-      broker.broadcast(undefined, "test", data);
-    }, 1000);
-
-    broker.listen(undefined, "return", (data)=>{
-      console.log("RETURN", data);
-    });
-
-    broker.listen(undefined, '.*', (data)=>{
-      console.log("CATCH ALL", data);
-    });
     //Test channels
     let slave=new uSACFastPackChannel(undefined, window.broker);
     console.log("--Slave channel ok?", slave!==undefined);
 
-    let master;
-    uSACFastPackChannel.accept("end_point", window.broker, (ch)=>{
-      master=ch;
-      console.log("--Master channel accept ok?", master!==undefined);
-      master.on_data=(data)=>{
-        console.log("MASTER GOT DATA", data);
-      };
-      master.on_control=(data)=>{
-        console.log("MASTER GOT CONTROL", data);
-      };
-
-      master.send_control("MOSI");
-      master.send_data("MOSI");
-
-    });
+    /*********************************************************************/
+    /* let master;                                                       */
+    /* uSACFastPackChannel.accept("end_point", window.broker, (ch)=>{    */
+    /*   master=ch;                                                      */
+    /*   console.log("--Master channel accept ok?", master!==undefined); */
+    /*   master.on_data=(data)=>{                                        */
+    /*     console.log("MASTER GOT DATA", data);                         */
+    /*   };                                                              */
+    /*   master.on_control=(data)=>{                                     */
+    /*     console.log("MASTER GOT CONTROL", data);                      */
+    /*   };                                                              */
+    /*                                                                   */
+    /*   master.send_control("MOSI");                                    */
+    /*   master.send_data("MOSI");                                       */
+    /*                                                                   */
+    /* });                                                               */
 
     slave.on_data=(data)=>{
       console.log("SLAVE GOT DATA", data);
@@ -110,8 +114,11 @@
 
     slave.connect("remote_end_point", (ch)=>{
       console.log("ON connect slave");
-      slave.send_data("MISO");
-      slave.send_control("MISO");
+      setInterval(()=>{
+        console.log("SENDING TO REMOTE");
+        slave.send_data(encoder.encode("MISO"));
+      }, 1000);
+      //slave.send_control("MISO");
     });
 
     }, 2000);

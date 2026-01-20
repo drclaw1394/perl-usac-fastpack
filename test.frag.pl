@@ -19,10 +19,10 @@ uSAC::FastPack::Channel->accept("remote_end_point", $broker, sub {
     my $client=$_[0];
     push @$clients, $client;
     $client->on_data=sub{
-      asay $STDERR, "DATA FROM BROWSER", $_[0];
+      asay $STDERR, "DATA FROM BROWSER", Dumper @_;
     };
     $client->on_control=sub{
-      asay $STDERR, "CONTROL FROM BROWSER", $_[0];
+      asay $STDERR, "CONTROL FROM BROWSER", Dumper @_; 
     };
     $client->send_control("YServer sent control data");
     $client->send_data("YServer sent normal data");

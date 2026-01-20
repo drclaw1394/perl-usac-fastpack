@@ -99,6 +99,7 @@ class uSACFastPackBrokerBridge {
         _inputs.push(msg);
         //arg.inputs=[msg];
       }
+
       arg.inputs=_inputs;
       fastpack.encode_message(arg);
 
@@ -169,6 +170,7 @@ class uSACFastPackBrokerBridgeWS extends uSACFastPackBrokerBridge{
 
 
       this.buffer_out_sub= (data, cb)=>{
+        console.log("---called ws buffer_out sub", data);
         ws.send(data[0]);
         cb  && cb(); // NOTE this is syncrhonous
       };
